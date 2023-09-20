@@ -1,0 +1,187 @@
+package main
+
+import "fmt"
+
+var phil0meals, phil1meals, phil2meals, phil3meals, phil4meals, phil5meals int
+
+func main() {
+	go fork0()
+	go fork1()
+	go fork2()
+	go fork3()
+	go fork4()
+
+	go phil0()
+	go phil1()
+	go phil2()
+	go phil3()
+	go phil4()
+
+	for true {
+		if phil0meals >= 3 && phil1meals >= 3 && phil2meals >= 3 && phil3meals >= 3 && phil4meals >= 3 {
+			break
+		}
+	}
+	fmt.Println("slut, prut, finale:)")
+	fmt.Print(" phil0: ")
+	fmt.Println(phil0meals)
+	fmt.Print(" phil1: ")
+	fmt.Println(phil1meals)
+	fmt.Print(" phil2: ")
+	fmt.Println(phil2meals)
+	fmt.Print(" phil3: ")
+	fmt.Println(phil3meals)
+	fmt.Print(" phil4: ")
+	fmt.Println(phil4meals)
+
+}
+
+// channels
+var chP0P1_F0 = make(chan string)
+
+var chP1P2_F1 = make(chan string)
+
+var chP2P3_F2 = make(chan string)
+
+var chP3P4_F3 = make(chan string)
+
+var chP4P0_F4 = make(chan string)
+
+func phils(answer string, ch1 chan string, ch2 chan string, philnum int) {
+	fmt.Println("should be free or taken: ----- " + answer)
+	if answer == "free" {
+		ch1 <- "taken"
+		ch2 <- "?"
+		answer = <-ch2
+		if answer == "free" {
+			ch2 <- "taken"
+			philnum++
+			fmt.Println("phil0 is eating")
+			ch2 <- "done"
+			ch1 <- "done"
+		} else if answer == "taken" {
+			ch2 <- "taken"
+		}
+	} else if answer == "taken" {
+		ch1 <- "?"
+	} else if answer == "?" {
+		ch1 <- "?"
+	}
+}
+
+func forks(request string, inUse bool, ch chan string) {
+	fmt.Println("should be done, ? or taken: ----- " + request)
+	if request == "done" {
+		inUse = false
+		ch <- "free"
+	} else if request == "?" {
+		if inUse == false {
+			ch <- "free"
+		} else if inUse {
+			ch <- "taken"
+		}
+	} else if request == "taken" {
+		inUse = true
+		ch <- "taken"
+	}
+}
+
+func phil0() {
+	var answer string
+	chP0P1_F0 <- "?"
+	for phil0meals < 3 {
+		answer = <-chP0P1_F0
+		phils(answer, chP0P1_F0, chP4P0_F4, phil0meals)
+	}
+}
+
+func phil1() {
+	var answer string
+	chP0P1_F0 <- "?"
+	for phil1meals < 3 {
+		answer = <-chP0P1_F0
+		phils(answer, chP0P1_F0, chP1P2_F1, phil1meals)
+	}
+}
+
+func phil2() {
+	var answer string
+	chP2P3_F2 <- "?"
+	for phil2meals < 3 {
+		answer = <-chP2P3_F2
+		phils(answer, chP2P3_F2, chP1P2_F1, phil2meals)
+	}
+}
+
+func phil3() {
+	var answer string
+	chP2P3_F2 <- "?"
+	for phil3meals < 3 {
+		answer = <-chP2P3_F2
+		phils(answer, chP2P3_F2, chP3P4_F3, phil3meals)
+	}
+}
+
+func phil4() {
+	var answer string
+	chP4P0_F4 <- "?"
+	for phil4meals < 3 {
+		answer = <-chP4P0_F4
+		phils(answer, chP4P0_F4, chP3P4_F3, phil4meals)
+	}
+}
+
+// all forks
+func fork0() {
+	var requestFromP0P1 string
+	var inUse bool
+	for true {
+		requestFromP0P1 = <-chP0P1_F0
+		fmt.Println("P0 or P1 " + requestFromP0P1)
+		forks(requestFromP0P1, inUse, chP0P1_F0)
+	}
+}
+
+func fork1() {
+	var requestFromP1P2 string
+	var inUse bool
+	for true {
+		requestFromP1P2 = <-chP1P2_F1
+		fmt.Println("P1 or P2 " + requestFromP1P2)
+
+		forks(requestFromP1P2, inUse, chP1P2_F1)
+	}
+}
+
+func fork2() {
+	var requestFromP2P3 string
+	var inUse bool
+	for true {
+		requestFromP2P3 = <-chP2P3_F2
+		fmt.Println("P2 or P3 " + requestFromP2P3)
+
+		forks(requestFromP2P3, inUse, chP2P3_F2)
+	}
+}
+
+func fork3() {
+	var requestFromP3P4 string
+	var inUse bool
+	for true {
+		requestFromP3P4 = <-chP3P4_F3
+		fmt.Println("P3 or P4 " + requestFromP3P4)
+
+		forks(requestFromP3P4, inUse, chP3P4_F3)
+	}
+}
+
+func fork4() {
+	var requestFromP4P0 string
+	var inUse bool
+	for true {
+		requestFromP4P0 = <-chP4P0_F4
+		fmt.Println("P4 or P0 " + requestFromP4P0)
+
+		forks(requestFromP4P0, inUse, chP4P0_F4)
+	}
+}

@@ -1,6 +1,21 @@
+// THIS PIECE OF CODE DOENS'T REACH A DEADLOCK BECUASE 
+// THE FORKS CHANNEL "free" AND EVEN THOUGH BOTH PHILOSOPHORS CLOSE 
+// TO THE FORK LISTEN IN THAT CHANNEL, ONLY ONE WILL RETREIVE 
+// THE MESSAGE, THE OTHER IS STILL WAITING TO RECEIVE THE MESSAGE 
+// "free", ONLY WHEN THE PHILOSOPHOR HAS ITS EVEN KNIFE 
+// (NUMBERED 0-4), HE WILL TRY FOR THE ODD KNIFE, AND THE SAME 
+// HAPPENS, UNTIL HE HAS BOTH HIS KNIFES AND HE SIGNALS TO BOTH 
+// KNIFES THAT HE IS DONE USING THEM. THE FORKS LISTENS FOR THE 
+// "done" MESSAGE FROM BOTH NEARBY PHILOSOPHORS, BUT BY USING 
+// SELECT, STOPS LISTENING AFTER RECEIVING THE MESSAGE DONE FROM 
+// ONE OF THEM, AND THEN AGAIN MESSAGING "free" TO THE CHANNEL 
+// THAT BOTH PHILOSOPHORS CAN RECEIVE FROM
+
 package main
 
-import "fmt"
+import (
+	"fmt"
+)
 
 var phil0meals, phil1meals, phil2meals, phil3meals, phil4meals, phil5meals int
 
@@ -10,20 +25,18 @@ func main() {
 	go fork2()
 	go fork3()
 	go fork4()
-	//go fork5()
+
 	go phil0()
 	go phil1()
 	go phil2()
 	go phil3()
 	go phil4()
-	//go phil5()
 
 	for true {
-		if phil0meals >= 3 && phil1meals >= 3 && phil2meals >= 3 && phil3meals >= 3 && phil4meals >= 3 /*&& phil5meals >= 3*/ {
+		if phil0meals >= 3 && phil1meals >= 3 && phil2meals >= 3 && phil3meals >= 3 && phil4meals >= 3 {
 			break
 		}
 	}
-	fmt.Println("slut, prut, finale:)")
 	fmt.Print(" phil0: ")
 	fmt.Println(phil0meals)
 	fmt.Print(" phil1: ")
@@ -37,145 +50,201 @@ func main() {
 
 }
 
-//channels
+// channels
+var chP0_F0 = make(chan string)
+var chP1_F0 = make(chan string)
+var chF0_P0P1 = make(chan string)
 
-var ch0_1 = make(chan int)
-var ch1_2 = make(chan int)
-var ch2_3 = make(chan int)
-var ch3_4 = make(chan int)
-var ch4_0 = make(chan int)
+var chP1_F1 = make(chan string)
+var chP2_F1 = make(chan string)
+var chF1_P1P2 = make(chan string)
 
-//var ch5_0 = make(chan int)
+var chP2_F2 = make(chan string)
+var chP3_F2 = make(chan string)
+var chF2_P2P3 = make(chan string)
 
-// all phils
+var chP3_F3 = make(chan string)
+var chP4_F3 = make(chan string)
+var chF3_P3P4 = make(chan string)
+
+var chP4_F4 = make(chan string)
+var chP0_F4 = make(chan string)
+var chF4_P4P0 = make(chan string)
+
+func forks(message string, inUse bool, ch1 chan string, ch2 chan string, ch3 chan string) {
+	if message == "done" {
+		ch3 <- "free"
+	}
+}
+
 func phil0() {
-	var even, odd int
-	fmt.Println("phil0 is Thinking??")
+	var answer string
+	fmt.Println("thinking")
 	for true {
-		even = <-ch4_0
-		if even == 1 {
-			odd = <-ch0_1
-			if even == 1 && odd == 1 {
+		answer = <-chF0_P0P1
+		if answer == "free" {
+			answer = <-chF4_P4P0
+			fmt.Println(answer)
+			if answer == "free" {
 				phil0meals++
-				fmt.Println("phil0: nam nam....")
-				ch4_0 <- 1
-				ch0_1 <- 1
-				fmt.Println("phil0 is Thinking??")
+
+				fmt.Print("phil 0 is eating and has eaten: ")
+				fmt.Println(phil0meals)
+				fmt.Println("phil 0 is thinking again")
+				chP0_F0 <- "done"
+				chP0_F4 <- "done"
 			}
 		}
 	}
 }
 
 func phil1() {
-	var even, odd int
-	fmt.Println("phil1 is Thinking??")
+	var answer string
+	fmt.Println("thinking")
 	for true {
-		even = <-ch1_2
-		if even == 1 {
-			odd = <-ch0_1
-			if even == 1 && odd == 1 {
+		answer = <-chF0_P0P1
+		if answer == "free" {
+			answer = <-chF1_P1P2
+			fmt.Println(answer)
+			if answer == "free" {
 				phil1meals++
-				fmt.Println("Phil1: nam nam....")
-				ch1_2 <- 1
-				ch0_1 <- 1
-				fmt.Println("phil1 is Thinking??")
-			}
-		}
-	}
-}
-func phil2() {
-	var even, odd int
-	fmt.Println("phil2 is Thinking??")
-	for true {
-		even = <-ch1_2
-		if even == 1 {
-			odd = <-ch2_3
-			if even == 1 && odd == 1 {
-				phil2meals++
-				fmt.Println("Phil2: nam nam....")
-				ch1_2 <- 1
-				ch2_3 <- 1
-				fmt.Println("phil2 is Thinking??")
-			}
-		}
-	}
-}
-func phil3() {
-	var even, odd int
-	fmt.Println("phil3 is Thinking??")
-	for true {
-		even = <-ch3_4
-		if even == 1 {
-			odd = <-ch2_3
-			if even == 1 && odd == 1 {
-				phil3meals++
-				fmt.Println("Phil3: nam nam....")
-				ch2_3 <- 1
-				ch3_4 <- 1
-				fmt.Println("phil3 is Thinking??")
-			}
-		}
-	}
-}
-func phil4() {
-	var even, odd int
-	fmt.Println("phil4 is Thinking??")
-	for true {
-		even = <-ch3_4
-		if even == 1 {
-			odd = <-ch4_0
-			if even == 1 && odd == 1 {
-				phil4meals++
-				fmt.Println("Phil4: nam nam....")
-				ch4_0 <- 1
-				ch3_4 <- 1
-				fmt.Println("phil4 is Thinking??")
+
+				fmt.Print("phil 1 is eating and has eaten: ")
+				fmt.Println(phil1meals)
+				fmt.Println("phil 1 is thinking again")
+				chP1_F0 <- "done"
+				chP1_F1 <- "done"
 			}
 		}
 	}
 }
 
-/*func phil5() {
-	var even, odd int
-	fmt.Println("phil5 is Thinking??")
+func phil2() {
+	var answer string
+	fmt.Println("thinking")
 	for true {
-		even = <-ch5_0
-		if even == 1 {
-			odd = <-ch4_5
-			if even == 1 && odd == 1 {
-				phil0meals++
-				fmt.Println("phil5: nam nam....")
-				ch5_0 <- 1
-				ch4_5 <- 1
-				fmt.Println("phil5 is Thinking??")
+		answer = <-chF2_P2P3
+		if answer == "free" {
+			answer = <-chF1_P1P2
+			fmt.Println(answer)
+			if answer == "free" {
+				phil2meals++
+
+				fmt.Print("phil 2 is eating and has eaten: ")
+				fmt.Println(phil2meals)
+				fmt.Println("phil 2 is thinking again")
+				chP2_F2 <- "done"
+				chP2_F1 <- "done"
 			}
 		}
 	}
-}*/
+}
+
+func phil3() {
+	var answer string
+	fmt.Println("thinking")
+	for true {
+		answer = <-chF2_P2P3
+		if answer == "free" {
+			answer = <-chF3_P3P4
+			fmt.Println(answer)
+			if answer == "free" {
+				phil3meals++
+
+				fmt.Print("phil 3 is eating and has eaten: ")
+				fmt.Println(phil3meals)
+				fmt.Println("phil 3 is thinking again")
+				chP3_F2 <- "done"
+				chP3_F3 <- "done"
+			}
+		}
+	}
+}
+
+func phil4() {
+	var answer string
+	fmt.Println("thinking")
+	for true {
+		answer = <-chF4_P4P0
+		if answer == "free" {
+			answer = <-chF3_P3P4
+			fmt.Println(answer)
+			if answer == "free" {
+				phil4meals++
+
+				fmt.Print("phil 4 is eating and has eaten: ")
+				fmt.Println(phil4meals)
+				fmt.Println("phil 4 is thinking again")
+				chP4_F4 <- "done"
+				chP4_F3 <- "done"
+			}
+		}
+	}
+}
 
 // all forks
 func fork0() {
-	ch4_0 <- 1
-	fmt.Println("Fork0 is free")
-}
-func fork1() {
-	ch0_1 <- 1
-	fmt.Println("Fork1 is free")
-}
-func fork2() {
-	ch1_2 <- 1
-	fmt.Println("Fork2 is free")
-}
-func fork3() {
-	ch2_3 <- 1
-	fmt.Println("Fork3 is free")
-}
-func fork4() {
-	ch3_4 <- 1
-	fmt.Println("Fork4 is free")
+	var inUse bool
+	chF0_P0P1 <- "free"
+	for true {
+		select {
+		case message := <-chP0_F0:
+			forks(message, inUse, chP0_F0, chP1_F0, chF0_P0P1)
+		case message := <-chP1_F0:
+			forks(message, inUse, chP0_F0, chP1_F0, chF0_P0P1)
+		}
+	}
 }
 
-/*func fork5() {
-	ch4_5 <- 1
-	fmt.Println("Fork5 is free")
-}*/
+func fork1() {
+	var inUse bool
+	chF1_P1P2 <- "free"
+
+	for true {
+		select {
+		case message := <-chP1_F1:
+			forks(message, inUse, chP1_F1, chP2_F1, chF1_P1P2)
+		case message := <-chP2_F1:
+			forks(message, inUse, chP1_F1, chP2_F1, chF1_P1P2)
+		}
+	}
+}
+
+func fork2() {
+	var inUse bool
+	chF2_P2P3 <- "free"
+	for true {
+		select {
+		case message := <-chP2_F2:
+			forks(message, inUse, chP2_F2, chP3_F2, chF2_P2P3)
+		case message := <-chP3_F2:
+			forks(message, inUse, chP2_F2, chP3_F2, chF2_P2P3)
+		}
+	}
+}
+
+func fork3() {
+	var inUse bool
+	chF3_P3P4 <- "free"
+	for true {
+		select {
+		case message := <-chP3_F3:
+			forks(message, inUse, chP3_F3, chP4_F3, chF3_P3P4)
+		case message := <-chP4_F3:
+			forks(message, inUse, chP3_F3, chP4_F3, chF3_P3P4)
+		}
+	}
+}
+
+func fork4() {
+	var inUse bool
+	chF4_P4P0 <- "free"
+	for true {
+		select {
+		case message := <-chP4_F4:
+			forks(message, inUse, chP4_F4, chP0_F4, chF4_P4P0)
+		case message := <-chP0_F4:
+			forks(message, inUse, chP4_F4, chP0_F4, chF4_P4P0)
+		}
+	}
+}
