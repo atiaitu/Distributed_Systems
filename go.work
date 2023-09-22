@@ -1,0 +1,6 @@
+go 1.21.0
+
+use (
+	./Handin1
+	./Handin2
+)
