@@ -2,12 +2,13 @@ package main
 
 import (
 	"fmt"
+	"math/rand"
 	"time"
 )
 
 func main() {
-	go client()
-	go server()
+	go myClient(rand.Intn(100))
+	go myServer(rand.Intn(100))
 
 	for true {
 		if serverStatus == "done" {
@@ -18,72 +19,67 @@ func main() {
 
 var serverStatus string
 
-var syn = make(chan int, 2)
+var syn = make(chan int)
+var ack = make(chan int)
 
-func client() {
-	syn <- 1
+func myClient(code int) {
+	syn <- code
 	for true {
 		select {
-		case ack := <-syn:
-			fmt.Println("C: message received")
+		case seq := <-syn:
+			fmt.Println("C: Message received!")
+			fmt.Println(seq)
 			select {
-			case seq := <-syn:
-				if seq == 2 || ack == 2 {
-					if seq == 2 {
-						syn <- seq
-						ack++
-						syn <- ack
-					} else {
-						syn <- ack
-						seq++
-						syn <- seq
-					}
-					fmt.Println("Job finished, yubi")
-					break
+			case ack_seq := <-ack:
+				fmt.Println("C:Second message received!")
+				fmt.Println(ack_seq)
+				if seq == code+1 {
+					syn <- seq
+					ack <- ack_seq + 1
+				} else {
+					fmt.Println("C: Wrong Message!!!")
 				}
-				//fmt.Println("Job wiwiwiw finished, yubi")
 			case <-time.After(2 * time.Second):
-				fmt.Println("C: message failed, timeout reached")
+				fmt.Println("C: Second message failed, timeout reached")
 			}
 		case <-time.After(2 * time.Second):
-			fmt.Println("C: second message failed, timeout reached")
+			fmt.Println("C: Message failed, timeout reached")
 		}
 	}
 }
 
-func server() {
+func myServer(code int) {
+	var holder int = 0
 	for true {
 		select {
-		case ack := <-syn:
-			var holder int = ack
-			holder++
-			syn <- holder
-			syn <- 10
-			fmt.Println("S: Message received!")
-
-			select {
-			case ack := <-syn:
-				fmt.Println("S: Message received!")
-				select {
-				case seq := <-syn:
-					fmt.Println("S: Second message received!")
-					if seq == 11 || ack == 11 {
-						fmt.Println("3-way handshake has been done!")
-						break
-					} else {
-						fmt.Println("You fucking piece of shit")
-					}
-
-				case <-time.After(2 * time.Second):
-					fmt.Println("S: Second message failed, timeout reached")
-				}
-
-			case <-time.After(2 * time.Second):
-				fmt.Println("S: message failed, timeout reached")
-			}
-
+		case seq := <-syn:
+			fmt.Println("S: Message received")
+			fmt.Println(seq)
+			holder = seq + 1
+			syn <- seq + 1
+			ack <- code
 		case <-time.After(2 * time.Second):
 			fmt.Println("S: Message failed, timeout reached")
+		}
+		select {
+		case seq := <-syn:
+			fmt.Println("S: Second message received")
+			fmt.Println(seq)
+			select {
+			case ack_seq := <-ack:
+				fmt.Println("S: Second value message received")
+				fmt.Println(ack_seq)
+				if seq == holder && ack_seq == code+1 {
+					fmt.Println("S: WE ARE DONE!")
+					serverStatus = "done"
+				} else {
+					fmt.Println("S: Wrong message, pulling out...")
+				}
+			case <-time.After(2 * time.Second):
+				fmt.Println("S: Wrong second value!")
+			}
+		case <-time.After(2 * time.Second):
+			fmt.Println("S: Wrong value!")
 		}
 	}
 }
