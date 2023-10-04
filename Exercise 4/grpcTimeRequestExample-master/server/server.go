@@ -3,12 +3,13 @@ package main
 import (
 	"context"
 	"flag"
-	"google.golang.org/grpc"
 	"log"
 	"net"
 	proto "simpleGuide/grpc"
 	"strconv"
 	"time"
+
+	"google.golang.org/grpc"
 )
 
 // Struct that will be used to represent the Server.
@@ -46,7 +47,7 @@ func startServer(server *Server) {
 	grpcServer := grpc.NewServer()
 
 	// Make the server listen at the given port (convert int port to string)
-	listener, err := net.Listen("tcp", ":"+strconv.Itoa(server.port))
+	listener, err := net.Listen("tcp", "localhost:"+strconv.Itoa(server.port))
 
 	if err != nil {
 		log.Fatalf("Could not create the server %v", err)
