@@ -1,6 +1,7 @@
 go 1.21.0
 
 use (
+	"./Exercise 4/grpcTimeRequestExample-master"
 	./Handin1
 	./Handin2
 )
