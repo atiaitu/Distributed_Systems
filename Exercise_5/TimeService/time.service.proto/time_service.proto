@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package timeservice;
+
+option go_package = "time.service.proto"; // Replace with your actual import path
+
+service TimeService {
+  rpc GetCurrentTime (GetCurrentTimeRequest) returns (GetCurrentTimeResponse);
+}
+
+message GetCurrentTimeRequest {
+}
+
+message GetCurrentTimeResponse {
+  string current_time = 1;
+}
