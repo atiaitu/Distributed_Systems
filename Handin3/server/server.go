@@ -4,7 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"io"
 	"log"
 	"net"
 	"os"
@@ -12,15 +11,16 @@ import (
 
 	// this has to be the same as the go.mod module,
 	// followed by the path to the folder the proto file is in.
-	gRPC "github.com/PatrickMatthiesen/DSYS-gRPC-template/proto"
+	gRPC "github.com/atiaitu/Distributed_Systems/tree/main/Handin3/proto"
 
 	"google.golang.org/grpc"
 )
 
 type Server struct {
-	gRPC.UnimplementedTemplateServer        // You need this line if you have a server
-	name                             string // Not required but useful if you want to name your server
-	port                             string // Not required but useful if your server needs to know what port it's listening to
+	gRPC.UnimplementedChittychatServer
+
+	name string // Not required but useful if you want to name your server
+	port string // Not required but useful if your server needs to know what port it's listening to
 
 	incrementValue int64      // value that clients can increment.
 	mutex          sync.Mutex // used to lock the server to avoid race conditions.
@@ -68,7 +68,7 @@ func launchServer() {
 		incrementValue: 0, // gives default value, but not sure if it is necessary
 	}
 
-	gRPC.RegisterTemplateServer(grpcServer, server) //Registers the server to the gRPC server.
+	gRPC.RegisterChittychatServer(grpcServer, server) //Registers the server to the gRPC server.
 
 	log.Printf("Server %s: Listening at %v\n", *serverName, list.Addr())
 
@@ -91,28 +91,23 @@ func (s *Server) Increment(ctx context.Context, Amount *gRPC.Amount) (*gRPC.Ack,
 	return &gRPC.Ack{NewValue: s.incrementValue}, nil
 }
 
-func (s *Server) SayHi(msgStream gRPC.Template_SayHiServer) error {
-	for {
-		// get the next message from the stream
-		msg, err := msgStream.Recv()
+func (s *Server) SendChatMessage(ctx context.Context, message *gRPC.ChatMessage) (*gRPC.Ack1, error) {
+	// Process the chat message, e.g., broadcast it to all connected clients.
+	// You can define a function for broadcasting messages to all clients.
 
-		// the stream is closed so we can exit the loop
-		if err == io.EOF {
-			break
-		}
-		// some other error
-		if err != nil {
-			return err
-		}
-		// log the message
-		log.Printf("Received message from %s: %s", msg.ClientName, msg.Message)
-	}
+	// Example: Broadcast the message to all connected clients
+	broadcastChatMessage(message)
 
-	// be a nice server and say goodbye to the client :)
-	ack := &gRPC.Farewell{Message: "Goodbye"}
-	msgStream.SendAndClose(ack)
+	//Logs in terminal, when client sends a message
+	log.Printf("Client %s sent message: %s", *&message.ClientName, message.Message)
 
-	return nil
+	// Return an acknowledgment
+	return &gRPC.Ack1{Message: "Chat message sent successfully"}, nil
+}
+
+// Add a function to broadcast chat messages to all clients
+func broadcastChatMessage(message *gRPC.ChatMessage) {
+	// Implement the logic to broadcast the message to all connected clients.
 }
 
 // Get preferred outbound ip of this machine

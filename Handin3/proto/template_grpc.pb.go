@@ -19,14 +19,19 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	Chittychat_Send_FullMethodName = "/proto.Chittychat/Send"
+	Chittychat_Increment_FullMethodName       = "/proto.Chittychat/Increment"
+	Chittychat_Send_FullMethodName            = "/proto.Chittychat/Send"
+	Chittychat_SendChatMessage_FullMethodName = "/proto.Chittychat/SendChatMessage"
 )
 
 // ChittychatClient is the client API for Chittychat service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ChittychatClient interface {
+	// one message is sent and one is recieved
+	Increment(ctx context.Context, in *Amount, opts ...grpc.CallOption) (*Ack, error)
 	Send(ctx context.Context, opts ...grpc.CallOption) (Chittychat_SendClient, error)
+	SendChatMessage(ctx context.Context, in *ChatMessage, opts ...grpc.CallOption) (*Ack1, error)
 }
 
 type chittychatClient struct {
@@ -35,6 +40,15 @@ type chittychatClient struct {
 
 func NewChittychatClient(cc grpc.ClientConnInterface) ChittychatClient {
 	return &chittychatClient{cc}
+}
+
+func (c *chittychatClient) Increment(ctx context.Context, in *Amount, opts ...grpc.CallOption) (*Ack, error) {
+	out := new(Ack)
+	err := c.cc.Invoke(ctx, Chittychat_Increment_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *chittychatClient) Send(ctx context.Context, opts ...grpc.CallOption) (Chittychat_SendClient, error) {
@@ -48,7 +62,7 @@ func (c *chittychatClient) Send(ctx context.Context, opts ...grpc.CallOption) (C
 
 type Chittychat_SendClient interface {
 	Send(*Message) error
-	Recv() (*Verification, error)
+	CloseAndRecv() (*Value, error)
 	grpc.ClientStream
 }
 
@@ -60,19 +74,34 @@ func (x *chittychatSendClient) Send(m *Message) error {
 	return x.ClientStream.SendMsg(m)
 }
 
-func (x *chittychatSendClient) Recv() (*Verification, error) {
-	m := new(Verification)
+func (x *chittychatSendClient) CloseAndRecv() (*Value, error) {
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	m := new(Value)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
 	return m, nil
 }
 
+func (c *chittychatClient) SendChatMessage(ctx context.Context, in *ChatMessage, opts ...grpc.CallOption) (*Ack1, error) {
+	out := new(Ack1)
+	err := c.cc.Invoke(ctx, Chittychat_SendChatMessage_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ChittychatServer is the server API for Chittychat service.
 // All implementations must embed UnimplementedChittychatServer
 // for forward compatibility
 type ChittychatServer interface {
+	// one message is sent and one is recieved
+	Increment(context.Context, *Amount) (*Ack, error)
 	Send(Chittychat_SendServer) error
+	SendChatMessage(context.Context, *ChatMessage) (*Ack1, error)
 	mustEmbedUnimplementedChittychatServer()
 }
 
@@ -80,8 +109,14 @@ type ChittychatServer interface {
 type UnimplementedChittychatServer struct {
 }
 
+func (UnimplementedChittychatServer) Increment(context.Context, *Amount) (*Ack, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Increment not implemented")
+}
 func (UnimplementedChittychatServer) Send(Chittychat_SendServer) error {
 	return status.Errorf(codes.Unimplemented, "method Send not implemented")
+}
+func (UnimplementedChittychatServer) SendChatMessage(context.Context, *ChatMessage) (*Ack1, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SendChatMessage not implemented")
 }
 func (UnimplementedChittychatServer) mustEmbedUnimplementedChittychatServer() {}
 
@@ -96,12 +131,30 @@ func RegisterChittychatServer(s grpc.ServiceRegistrar, srv ChittychatServer) {
 	s.RegisterService(&Chittychat_ServiceDesc, srv)
 }
 
+func _Chittychat_Increment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Amount)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChittychatServer).Increment(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Chittychat_Increment_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChittychatServer).Increment(ctx, req.(*Amount))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Chittychat_Send_Handler(srv interface{}, stream grpc.ServerStream) error {
 	return srv.(ChittychatServer).Send(&chittychatSendServer{stream})
 }
 
 type Chittychat_SendServer interface {
-	Send(*Verification) error
+	SendAndClose(*Value) error
 	Recv() (*Message, error)
 	grpc.ServerStream
 }
@@ -110,7 +163,7 @@ type chittychatSendServer struct {
 	grpc.ServerStream
 }
 
-func (x *chittychatSendServer) Send(m *Verification) error {
+func (x *chittychatSendServer) SendAndClose(m *Value) error {
 	return x.ServerStream.SendMsg(m)
 }
 
@@ -122,18 +175,44 @@ func (x *chittychatSendServer) Recv() (*Message, error) {
 	return m, nil
 }
 
+func _Chittychat_SendChatMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ChatMessage)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChittychatServer).SendChatMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Chittychat_SendChatMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChittychatServer).SendChatMessage(ctx, req.(*ChatMessage))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Chittychat_ServiceDesc is the grpc.ServiceDesc for Chittychat service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var Chittychat_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "proto.Chittychat",
 	HandlerType: (*ChittychatServer)(nil),
-	Methods:     []grpc.MethodDesc{},
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "Increment",
+			Handler:    _Chittychat_Increment_Handler,
+		},
+		{
+			MethodName: "SendChatMessage",
+			Handler:    _Chittychat_SendChatMessage_Handler,
+		},
+	},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "Send",
 			Handler:       _Chittychat_Send_Handler,
-			ServerStreams: true,
 			ClientStreams: true,
 		},
 	},

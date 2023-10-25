@@ -1,11 +1,35 @@
 syntax = "proto3";
 
-option go_package = "github.com/atiaitu/Distributed_Systems/Handin3/proto";
+option go_package = "https://github.com/atiaitu/Distributed_Systems/tree/main/Handin3/proto";
 
 package proto;
 
 service Chittychat {
-    rpc Send (stream Message) returns (stream Verification);
+
+    // one message is sent and one is recieved
+    rpc Increment (Amount) returns (Ack);
+
+    rpc Send (stream Message) returns (Value);
+    rpc SendChatMessage (ChatMessage) returns (Ack1);
+}
+
+// Amount is a type containing a string and int. They are intialized as the first and second parameter value.
+message Amount {
+    string clientName = 1;
+    int64 value = 2;
+}
+
+message Ack {
+    int64 newValue = 1;
+}
+
+message Ack1 {
+    string message = 1;
+}
+
+message ChatMessage {
+    string clientName = 1;
+    string message = 2;
 }
 
 message Message {
@@ -13,6 +37,6 @@ message Message {
     string message = 2;
 }
 
-message Verification {
+message Value {
     string message = 1;
 }
