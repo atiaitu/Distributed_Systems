@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+option go_package = "github.com/atiaitu/Distributed_Systems/Handin3/proto";
+
+package proto;
+
+service Chittychat {
+    rpc Send (stream Message) returns (stream Verification);
+}
+
+message Message {
+    string clientName = 1;
+    string message = 2;
+}
+
+message Verification {
+    string message = 1;
+}
