@@ -61,15 +61,16 @@ func main() {
 }
 
 func receiveMessages(chatStream gRPC.Chittychat_ChatStreamClient) {
-	log.Printf("nu er den inde i receive")
 	for {
 		ack, err := chatStream.Recv()
-		if err != nil {
-			log.Printf("Error receiving message from server: %v", err)
-			return
-		}
+		if ack.ClientName != *clientsName {
+			if err != nil {
+				log.Printf("Error receiving message from server: %v", err)
+				return
+			}
 
-		log.Printf("Message from the server: %s", ack.Message)
+			log.Printf("Message from %s: %s", ack.ClientName, ack.Message)
+		}
 	}
 }
 
@@ -118,6 +119,8 @@ func ConnectToServer() {
 func parseInput() {
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Println("Welcome to Chitty-chat")
+	fmt.Println("Use /m <your message> to write a message")
+	fmt.Println("Use /l to leave the chatroom")
 	fmt.Println("--------------------")
 
 	for {
@@ -191,11 +194,6 @@ func sendChatMessage(clientName string, message string) {
 		}
 		log.Printf("Client %s: %s", clientName, ack.Message)
 	}
-}
-
-func ReceiveChatMessage(ctx context.Context, message *gRPC.ChatMessage) (*gRPC.Ack1, error) {
-	log.Printf("Message from %s: %s", message.ClientName, message.Message)
-	return &gRPC.Ack1{Message: "Chat message received"}, nil
 }
 
 // Function which returns a true boolean if the connection to the server is ready, and false if it's not.

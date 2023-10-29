@@ -29,6 +29,10 @@ type Server struct {
 	clientsMux sync.Mutex
 }
 
+type Client struct {
+	conn gRPC.ChittychatClient // Replace with the actual gRPC client type
+}
+
 // Initialize the map in your server's constructor.
 func NewServer() *Server {
 	return &Server{
@@ -70,7 +74,7 @@ func (s *Server) ChatStream(stream gRPC.Chittychat_ChatStreamServer) error {
 			if clientStream != stream {
 				// Don't send the message back to the sender.
 				log.Printf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-				if err := clientStream.Send(&gRPC.Ack1{Message: message.Message}); err != nil {
+				if err := clientStream.Send(&gRPC.ChatMessage{Message: message.Message}); err != nil {
 					log.Printf("Error sending message to client: %v", err)
 					// Handle the error, e.g., remove the disconnected client from the list.
 				}
@@ -149,14 +153,36 @@ func (s *Server) Increment(ctx context.Context, Amount *gRPC.Amount) (*gRPC.Ack,
 }
 
 func (s *Server) SendChatMessage(ctx context.Context, message *gRPC.ChatMessage) (*gRPC.Ack1, error) {
-	// Process the chat message, e.g., broadcast it to all connected clients.
-	// You can define a function for broadcasting messages to all clients.
+	// Logs in the terminal when a client sends a message
+	log.Printf("Client %s sent message: %s", message.ClientName, message.Message)
 
-	//Logs in terminal, when client sends a message
-	go log.Printf("Client %s sent message: %s", message.ClientName, message.Message)
+	// Broadcast the message to all connected clients
+	s.BroadcastChatMessage(message)
 
 	// Return an acknowledgment
 	return &gRPC.Ack1{Message: "Chat message sent successfully"}, nil
+}
+
+// BroadcastChatMessage sends an acknowledgment message to all connected clients.
+func (s *Server) BroadcastChatMessage(message *gRPC.ChatMessage) {
+	s.clientsMux.Lock()
+	defer s.clientsMux.Unlock()
+
+	for clientStream := range s.clients {
+		ackMessage := &gRPC.ChatMessage{Message: message.Message, ClientName: message.ClientName}
+		if err := clientStream.Send(ackMessage); err != nil {
+			log.Printf("Error sending message to client: %v", err)
+			// Handle the error, e.g., remove the disconnected client from the list.
+		}
+	}
+}
+
+func (c *Client) SendMessage(message *gRPC.ChatMessage) error {
+	_, err := c.conn.SendChatMessage(context.Background(), message)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // Function to add a new client to the list

@@ -9,7 +9,7 @@ service Chittychat {
     rpc Send(stream Message) returns (Value);
     rpc SendChatMessage(ChatMessage) returns (Ack1);
     rpc HandleNewClient(JoinMessage) returns (Ack1);
-    rpc ChatStream(stream ChatMessage) returns (stream Ack1);
+    rpc ChatStream(stream ChatMessage) returns (stream ChatMessage);
 }
 
 // Amount is a type containing a string and int. They are intialized as the first and second parameter value.
