@@ -24,12 +24,69 @@ type Server struct {
 
 	incrementValue int64      // value that clients can increment.
 	mutex          sync.Mutex // used to lock the server to avoid race conditions.
+
+	clients    map[gRPC.Chittychat_ChatStreamServer]bool
+	clientsMux sync.Mutex
+}
+
+// Initialize the map in your server's constructor.
+func NewServer() *Server {
+	return &Server{
+		clients: make(map[gRPC.Chittychat_ChatStreamServer]bool),
+	}
+}
+
+// Add connected client streams to the map when they join.
+func (s *Server) ChatStream(stream gRPC.Chittychat_ChatStreamServer) error {
+	if s.clients == nil {
+		s.clients = make(map[gRPC.Chittychat_ChatStreamServer]bool)
+	}
+
+	s.clientsMux.Lock()
+	s.clients[stream] = true
+	s.clientsMux.Unlock()
+
+	// Remove the client's stream when it disconnects.
+	defer func() {
+		s.clientsMux.Lock()
+		delete(s.clients, stream)
+		s.clientsMux.Unlock()
+	}()
+
+	// Receive and broadcast messages from the stream.
+	for {
+		message, err := stream.Recv()
+		if err != nil {
+			log.Printf("Client disconnected: %v", err)
+			break
+		}
+
+		// Process the received message (e.g., log it).
+		log.Printf("Received message from %s: %s", message.ClientName, message.Message)
+
+		// Broadcast the message to all connected clients.
+		s.clientsMux.Lock()
+		for clientStream := range s.clients {
+			if clientStream != stream {
+				// Don't send the message back to the sender.
+				log.Printf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+				if err := clientStream.Send(&gRPC.Ack1{Message: message.Message}); err != nil {
+					log.Printf("Error sending message to client: %v", err)
+					// Handle the error, e.g., remove the disconnected client from the list.
+				}
+			}
+		}
+		s.clientsMux.Unlock()
+	}
+	return nil
 }
 
 // flags are used to get arguments from the terminal. Flags take a value, a default value and a description of the flag.
 // to use a flag then just add it as an argument when running the program.
 var serverName = flag.String("name", "default", "Senders name") // set with "-name <name>" in terminal
 var port = flag.String("port", "5400", "Server port")           // set with "-port <port>" in terminal
+var clientsList = make(map[string]struct{})
+var clientConnections []*grpc.ClientConn
 
 func main() {
 
@@ -95,19 +152,39 @@ func (s *Server) SendChatMessage(ctx context.Context, message *gRPC.ChatMessage)
 	// Process the chat message, e.g., broadcast it to all connected clients.
 	// You can define a function for broadcasting messages to all clients.
 
-	// Example: Broadcast the message to all connected clients
-	broadcastChatMessage(message)
-
 	//Logs in terminal, when client sends a message
-	log.Printf("Client %s sent message: %s", *&message.ClientName, message.Message)
+	go log.Printf("Client %s sent message: %s", message.ClientName, message.Message)
 
 	// Return an acknowledgment
 	return &gRPC.Ack1{Message: "Chat message sent successfully"}, nil
 }
 
-// Add a function to broadcast chat messages to all clients
-func broadcastChatMessage(message *gRPC.ChatMessage) {
-	// Implement the logic to broadcast the message to all connected clients.
+// Function to add a new client to the list
+func (s *Server) addClient(clientName string) {
+	s.mutex.Lock()
+	clientsList[clientName] = struct{}{}
+	s.mutex.Unlock()
+}
+
+// Function to remove a client from the list
+func (s *Server) removeClient(clientName string) {
+	s.mutex.Lock()
+	delete(clientsList, clientName)
+	s.mutex.Unlock()
+}
+
+// Function to handle a new client joining
+func (s *Server) HandleNewClient(ctx context.Context, message *gRPC.JoinMessage) (*gRPC.Ack1, error) {
+	s.addClient(message.Message)
+	log.Printf("%s", message.Message)
+	// You can perform additional actions here when a new client joins.
+	return &gRPC.Ack1{Message: "Join message sent successfully"}, nil
+}
+
+// Function to handle a client leaving
+func (s *Server) handleClientLeave(clientName string) {
+	s.removeClient(clientName)
+	// You can perform additional actions here when a client leaves.
 }
 
 // Get preferred outbound ip of this machine

@@ -26,21 +26,67 @@ var server gRPC.ChittychatClient //the server
 var ServerConn *grpc.ClientConn  //the server connection
 
 func main() {
-	//parse flag/arguments
+	// Parse flag/arguments
 	flag.Parse()
 
 	fmt.Println("--- Chitty-Chat ---")
 
-	//log to file instead of console
-	//f := setLog()
-	//defer f.Close()
+	// Log to file instead of console
+	// f := setLog()
+	// defer f.Close()
 
-	//connect to server and close the connection when program closes
+	// Connect to the server and close the connection when the program exits
 	ConnectToServer()
 	defer ServerConn.Close()
 
-	//start the biding
+	// Create the bidirectional streaming RPC for message reception.
+	chatStream, err := server.ChatStream(context.Background())
+	if err != nil {
+		log.Printf("Client %s: Error creating chat stream: %v", *clientsName, err)
+		return
+	} else {
+		log.Printf("Client %s joined on chat stream", *clientsName)
+	}
+
+	// Start a goroutine to receive and process messages from the server.
+	go receiveMessages(chatStream)
+
+	// Send a join message to the server
+	joinMessage := fmt.Sprintf("%s joined the server on port %s", *clientsName, *serverPort)
+	sendJoinMessage(joinMessage)
+
+	// Start the binding
 	parseInput()
+
+}
+
+func receiveMessages(chatStream gRPC.Chittychat_ChatStreamClient) {
+	log.Printf("nu er den inde i receive")
+	for {
+		ack, err := chatStream.Recv()
+		if err != nil {
+			log.Printf("Error receiving message from server: %v", err)
+			return
+		}
+
+		log.Printf("Message from the server: %s", ack.Message)
+	}
+}
+
+func sendJoinMessage(message string) {
+	chatMessage := &gRPC.JoinMessage{
+		Name:    *clientsName,
+		Message: message,
+	}
+
+	// Make a gRPC call to send the chat message
+	ack, err := server.HandleNewClient(context.Background(), chatMessage)
+	if err != nil {
+		log.Printf("Client %s: Error sending join message: %v", *clientsName, err)
+		return
+	}
+
+	log.Printf("Client %s: %s", *clientsName, ack.Message)
 }
 
 // connect to server
@@ -88,12 +134,11 @@ func parseInput() {
 			continue
 		}
 
-		if input == "hi" {
-			sayHi()
-		} else if strings.HasPrefix(input, "/m") {
+		if strings.HasPrefix(input, "/m") {
 			// Extract the message text after "/message"
 			message := strings.TrimSpace(input[len("/m"):])
-			sendChatMessage(message)
+			sendChatMessage(*clientsName, message)
+
 		} else {
 			val, err := strconv.ParseInt(input, 10, 64)
 			if err != nil {
@@ -129,45 +174,28 @@ func incrementVal(val int64) {
 	}
 }
 
-func sendChatMessage(message string) {
+func sendChatMessage(clientName string, message string) {
 	chatMessage := &gRPC.ChatMessage{
-		ClientName: *clientsName,
+		ClientName: clientName,
 		Message:    message,
 	}
 
 	// Make a gRPC call to send the chat message
 	if len(chatMessage.Message) > 128 {
-		log.Printf("The length of your message must be under 128 characters")
+		log.Printf("Client %s: The length of your message must be under 128 characters", clientName)
 	} else {
 		ack, err := server.SendChatMessage(context.Background(), chatMessage)
 		if err != nil {
-			log.Printf("Client %s: Error sending chat message: %v", *clientsName, err)
+			log.Printf("Client %s: Error sending chat message: %v", clientName, err)
 			return
 		}
-		log.Printf("Client %s: Chat message sent successfully: %s", *clientsName, ack.Message)
+		log.Printf("Client %s: %s", clientName, ack.Message)
 	}
 }
 
-func sayHi() {
-	// get a stream to the server
-	stream, err := server.Send(context.Background())
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	// send some messages to the server
-	stream.Send(&gRPC.Message{ClientName: *clientsName, Message: "Hi"})
-	stream.Send(&gRPC.Message{ClientName: *clientsName, Message: "How are you?"})
-	stream.Send(&gRPC.Message{ClientName: *clientsName, Message: "I'm fine, thanks."})
-
-	// close the stream
-	farewell, err := stream.CloseAndRecv()
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	log.Println("server says: ", farewell)
+func ReceiveChatMessage(ctx context.Context, message *gRPC.ChatMessage) (*gRPC.Ack1, error) {
+	log.Printf("Message from %s: %s", message.ClientName, message.Message)
+	return &gRPC.Ack1{Message: "Chat message received"}, nil
 }
 
 // Function which returns a true boolean if the connection to the server is ready, and false if it's not.

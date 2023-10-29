@@ -5,12 +5,11 @@ option go_package = "https://github.com/atiaitu/Distributed_Systems/tree/main/Ha
 package proto;
 
 service Chittychat {
-
-    // one message is sent and one is recieved
-    rpc Increment (Amount) returns (Ack);
-
-    rpc Send (stream Message) returns (Value);
-    rpc SendChatMessage (ChatMessage) returns (Ack1);
+   rpc Increment(Amount) returns (Ack);
+    rpc Send(stream Message) returns (Value);
+    rpc SendChatMessage(ChatMessage) returns (Ack1);
+    rpc HandleNewClient(JoinMessage) returns (Ack1);
+    rpc ChatStream(stream ChatMessage) returns (stream Ack1);
 }
 
 // Amount is a type containing a string and int. They are intialized as the first and second parameter value.
@@ -39,4 +38,9 @@ message Message {
 
 message Value {
     string message = 1;
+}
+
+message JoinMessage {
+    string name = 1;
+    string message = 2;
 }
