@@ -67,20 +67,6 @@ func (s *Server) ChatStream(stream gRPC.Chittychat_ChatStreamServer) error {
 
 		// Process the received message (e.g., log it).
 		log.Printf("Received message from %s: %s", message.ClientName, message.Message)
-
-		// Broadcast the message to all connected clients.
-		s.clientsMux.Lock()
-		for clientStream := range s.clients {
-			if clientStream != stream {
-				// Don't send the message back to the sender.
-				log.Printf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-				if err := clientStream.Send(&gRPC.ChatMessage{Message: message.Message}); err != nil {
-					log.Printf("Error sending message to client: %v", err)
-					// Handle the error, e.g., remove the disconnected client from the list.
-				}
-			}
-		}
-		s.clientsMux.Unlock()
 	}
 	return nil
 }
@@ -189,6 +175,14 @@ func (c *Client) SendMessage(message *gRPC.ChatMessage) error {
 func (s *Server) addClient(clientName string) {
 	s.mutex.Lock()
 	clientsList[clientName] = struct{}{}
+
+	for clientStream := range s.clients {
+		ackMessage := &gRPC.ChatMessage{ClientName: clientName}
+		if err := clientStream.Send(ackMessage); err != nil {
+			log.Printf("Error sending message to client: %v", err)
+			// Handle the error, e.g., remove the disconnected client from the list.
+		}
+	}
 	s.mutex.Unlock()
 }
 
@@ -196,6 +190,15 @@ func (s *Server) addClient(clientName string) {
 func (s *Server) removeClient(clientName string) {
 	s.mutex.Lock()
 	delete(clientsList, clientName)
+
+	for clientStream := range s.clients {
+		ackMessage := &gRPC.ChatMessage{ClientName: clientName}
+		if err := clientStream.Send(ackMessage); err != nil {
+			log.Printf("Error sending message to client: %v", err)
+			// Handle the error, e.g., remove the disconnected client from the list.
+		}
+	}
+
 	s.mutex.Unlock()
 }
 

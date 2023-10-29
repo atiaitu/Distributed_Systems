@@ -69,7 +69,7 @@ func receiveMessages(chatStream gRPC.Chittychat_ChatStreamClient) {
 				return
 			}
 
-			log.Printf("Message from %s: %s", ack.ClientName, ack.Message)
+			log.Printf("%s: %s", ack.ClientName, ack.Message)
 		}
 	}
 }
