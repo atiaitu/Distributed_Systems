@@ -24,6 +24,7 @@ var serverPort = flag.String("server", "5400", "Tcp server")
 
 var server gRPC.ChittychatClient //the server
 var ServerConn *grpc.ClientConn  //the server connection
+var stopRoutine = make(chan bool)
 
 func main() {
 	// Parse flag/arguments
@@ -39,23 +40,29 @@ func main() {
 
 	// Start the binding
 	var joined = false
+
 	parseInput(joined)
 }
 
-func receiveMessages(chatStream gRPC.Chittychat_ChatStreamClient) {
+func receiveMessages(chatStream gRPC.Chittychat_ChatStreamClient, stopRoutine chan bool) {
 	for {
-		if chatStream == nil {
-			// Ensure that chatStream is not nil before accessing it
+		select {
+		case <-stopRoutine:
 			return
-		}
-		ack, err := chatStream.Recv()
-		if ack.ClientName != *clientsName {
-			if err != nil {
-				log.Printf("Error receiving message from server: %v", err)
+		default:
+			if chatStream == nil {
+				// Ensure that chatStream is not nil before accessing it
 				return
 			}
+			ack, err := chatStream.Recv()
+			if ack.ClientName != *clientsName {
+				if err != nil {
+					log.Printf("Error receiving message from server: %v", err)
+					return
+				}
 
-			log.Printf("%s: %s", ack.ClientName, ack.Message)
+				log.Printf("%s: %s", ack.ClientName, ack.Message)
+			}
 		}
 	}
 }
@@ -153,6 +160,7 @@ func parseInput(joined bool) {
 				// Send leave message
 				sendLeaveMessage()
 				joined = false
+				stopRoutine <- true
 			} else {
 				log.Println("You cannot leave before joining. Use /j to join the chat.")
 			}
@@ -162,7 +170,7 @@ func parseInput(joined bool) {
 
 			// Start a goroutine to receive and process messages from the server.
 			joined = true
-			go receiveMessages(chatStream)
+			go receiveMessages(chatStream, stopRoutine)
 			if err != nil {
 				log.Printf("Client %s: Error creating chat stream: %v", *clientsName, err)
 				return
