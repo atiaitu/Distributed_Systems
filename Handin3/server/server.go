@@ -25,19 +25,11 @@ type Server struct {
 	incrementValue int64      // value that clients can increment.
 	mutex          sync.Mutex // used to lock the server to avoid race conditions.
 
-	clients    map[gRPC.Chittychat_ChatStreamServer]bool
-	clientsMux sync.Mutex
+	clients map[gRPC.Chittychat_ChatStreamServer]bool
 }
 
 type Client struct {
 	conn gRPC.ChittychatClient // Replace with the actual gRPC client type
-}
-
-// Initialize the map in your server's constructor.
-func NewServer() *Server {
-	return &Server{
-		clients: make(map[gRPC.Chittychat_ChatStreamServer]bool),
-	}
 }
 
 // Add connected client streams to the map when they join.
@@ -46,15 +38,15 @@ func (s *Server) ChatStream(stream gRPC.Chittychat_ChatStreamServer) error {
 		s.clients = make(map[gRPC.Chittychat_ChatStreamServer]bool)
 	}
 
-	s.clientsMux.Lock()
+	s.mutex.Lock()
 	s.clients[stream] = true
-	s.clientsMux.Unlock()
+	s.mutex.Unlock()
 
 	// Remove the client's stream when it disconnects.
 	defer func() {
-		s.clientsMux.Lock()
+		s.mutex.Lock()
 		delete(s.clients, stream)
-		s.clientsMux.Unlock()
+		s.mutex.Unlock()
 	}()
 
 	// Receive and broadcast messages from the stream.
@@ -89,8 +81,6 @@ func main() {
 
 	// launch the server
 	launchServer()
-
-	// code here is unreachable because launchServer occupies the current thread.
 }
 
 func launchServer() {
@@ -151,8 +141,8 @@ func (s *Server) SendChatMessage(ctx context.Context, message *gRPC.ChatMessage)
 
 // BroadcastChatMessage sends an acknowledgment message to all connected clients.
 func (s *Server) BroadcastChatMessage(message *gRPC.ChatMessage) {
-	s.clientsMux.Lock()
-	defer s.clientsMux.Unlock()
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 
 	for clientStream := range s.clients {
 		ackMessage := &gRPC.ChatMessage{Message: message.Message, ClientName: message.ClientName}
@@ -163,19 +153,15 @@ func (s *Server) BroadcastChatMessage(message *gRPC.ChatMessage) {
 	}
 }
 
-func (c *Client) SendMessage(message *gRPC.ChatMessage) error {
-	_, err := c.conn.SendChatMessage(context.Background(), message)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 // Function to add a new client to the list
 func (s *Server) addClient(clientName string) {
 	s.mutex.Lock()
 	clientsList[clientName] = struct{}{}
+	s.BroadcastJoinedClient(clientName)
+	s.mutex.Unlock()
+}
 
+func (s *Server) BroadcastJoinedClient(clientName string) {
 	for clientStream := range s.clients {
 		ackMessage := &gRPC.ChatMessage{ClientName: clientName}
 		if err := clientStream.Send(ackMessage); err != nil {
@@ -183,37 +169,47 @@ func (s *Server) addClient(clientName string) {
 			// Handle the error, e.g., remove the disconnected client from the list.
 		}
 	}
-	s.mutex.Unlock()
+}
+
+func (s *Server) BroadcastClientLeave(clientName string) gRPC.Ack1 {
+	client := &gRPC.ChatMessage{
+		Message: "Participant " + clientName + " left Chitty-Chat at Lamport time L",
+	}
+
+	for clientStream := range s.clients {
+		if err := clientStream.Send(client); err != nil {
+			log.Printf("Error sending message to client: %v", err)
+			// Handle the error, e.g., remove the disconnected client from the list.
+		}
+	}
+
+	log.Printf(client.Message)
+
+	return gRPC.Ack1{Message: client.Message}
 }
 
 // Function to remove a client from the list
 func (s *Server) removeClient(clientName string) {
 	s.mutex.Lock()
 	delete(clientsList, clientName)
-
-	for clientStream := range s.clients {
-		ackMessage := &gRPC.ChatMessage{ClientName: clientName}
-		if err := clientStream.Send(ackMessage); err != nil {
-			log.Printf("Error sending message to client: %v", err)
-			// Handle the error, e.g., remove the disconnected client from the list.
-		}
-	}
-
 	s.mutex.Unlock()
 }
 
 // Function to handle a new client joining
-func (s *Server) HandleNewClient(ctx context.Context, message *gRPC.JoinMessage) (*gRPC.Ack1, error) {
+func (s *Server) HandleNewClient(ctx context.Context, message *gRPC.JoinMessage) (*gRPC.GiveTimestampAndAck, error) {
 	s.addClient(message.Message)
 	log.Printf("%s", message.Message)
 	// You can perform additional actions here when a new client joins.
-	return &gRPC.Ack1{Message: "Join message sent successfully"}, nil
+	return &gRPC.GiveTimestampAndAck{Message: "You joined the server succesfully", Timestamp: 3}, nil //ikke færdig, skal implementere lamport
 }
 
 // Function to handle a client leaving
-func (s *Server) handleClientLeave(clientName string) {
+func (s *Server) HandleClientLeave(ctx context.Context, clientname *gRPC.ClientName) (*gRPC.Ack1, error) {
+	var clientName = clientname.ClientName
 	s.removeClient(clientName)
+	var clientLeaveMessage = s.BroadcastClientLeave(clientName)
 	// You can perform additional actions here when a client leaves.
+	return &gRPC.Ack1{Message: clientLeaveMessage.Message}, nil
 }
 
 // Get preferred outbound ip of this machine

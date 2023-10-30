@@ -29,8 +29,6 @@ func main() {
 	// Parse flag/arguments
 	flag.Parse()
 
-	fmt.Println("--- Chitty-Chat ---")
-
 	// Log to file instead of console
 	// f := setLog()
 	// defer f.Close()
@@ -39,29 +37,17 @@ func main() {
 	ConnectToServer()
 	defer ServerConn.Close()
 
-	// Create the bidirectional streaming RPC for message reception.
-	chatStream, err := server.ChatStream(context.Background())
-	if err != nil {
-		log.Printf("Client %s: Error creating chat stream: %v", *clientsName, err)
-		return
-	} else {
-		log.Printf("Client %s joined on chat stream", *clientsName)
-	}
-
-	// Start a goroutine to receive and process messages from the server.
-	go receiveMessages(chatStream)
-
-	// Send a join message to the server
-	joinMessage := fmt.Sprintf("%s joined the server on port %s", *clientsName, *serverPort)
-	sendJoinMessage(joinMessage)
-
 	// Start the binding
-	parseInput()
-
+	var joined = false
+	parseInput(joined)
 }
 
 func receiveMessages(chatStream gRPC.Chittychat_ChatStreamClient) {
 	for {
+		if chatStream == nil {
+			// Ensure that chatStream is not nil before accessing it
+			return
+		}
 		ack, err := chatStream.Recv()
 		if ack.ClientName != *clientsName {
 			if err != nil {
@@ -87,7 +73,22 @@ func sendJoinMessage(message string) {
 		return
 	}
 
-	log.Printf("Client %s: %s", *clientsName, ack.Message)
+	log.Printf(ack.Message)
+}
+
+func sendLeaveMessage() {
+	client := &gRPC.ClientName{
+		ClientName: *clientsName,
+	}
+
+	// Make a gRPC call to send the chat message
+	ack, err := server.HandleClientLeave(context.Background(), client)
+	if err != nil {
+		log.Printf("Client %s: Error sending join message: %v", *clientsName, err)
+		return
+	}
+	if ack.Message == "hej" {
+	} //so the program can run
 }
 
 // connect to server
@@ -116,9 +117,10 @@ func ConnectToServer() {
 	log.Println("the connection is:", conn.GetState().String())
 }
 
-func parseInput() {
+func parseInput(joined bool) {
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Println("Welcome to Chitty-chat")
+	fmt.Println("Use /j to join the chatroom")
 	fmt.Println("Use /m <your message> to write a message")
 	fmt.Println("Use /l to leave the chatroom")
 	fmt.Println("--------------------")
@@ -138,10 +140,37 @@ func parseInput() {
 		}
 
 		if strings.HasPrefix(input, "/m") {
-			// Extract the message text after "/message"
-			message := strings.TrimSpace(input[len("/m"):])
-			sendChatMessage(*clientsName, message)
+			if joined {
+				// Extract the message text after "/message"
+				message := strings.TrimSpace(input[len("/m"):])
+				sendChatMessage(*clientsName, message)
 
+			} else {
+				log.Println("You cannot write a message before joining. Use /j to join the chat.")
+			}
+		} else if strings.HasPrefix(input, "/l") {
+			if joined {
+				// Send leave message
+				sendLeaveMessage()
+				joined = false
+			} else {
+				log.Println("You cannot leave before joining. Use /j to join the chat.")
+			}
+		} else if strings.HasPrefix(input, "/j") {
+			// Create the bidirectional streaming RPC for message reception.
+			chatStream, err := server.ChatStream(context.Background())
+
+			// Start a goroutine to receive and process messages from the server.
+			joined = true
+			go receiveMessages(chatStream)
+			if err != nil {
+				log.Printf("Client %s: Error creating chat stream: %v", *clientsName, err)
+				return
+			}
+
+			// Send a join message to the server
+			joinMessage := fmt.Sprintf("Participant %s joined Chitty-Chat at Lamport time %s", *clientsName, *serverPort) //skal ændres til lamporttime istedet for serverport
+			sendJoinMessage(joinMessage)
 		} else {
 			val, err := strconv.ParseInt(input, 10, 64)
 			if err != nil {
@@ -189,10 +218,10 @@ func sendChatMessage(clientName string, message string) {
 	} else {
 		ack, err := server.SendChatMessage(context.Background(), chatMessage)
 		if err != nil {
-			log.Printf("Client %s: Error sending chat message: %v", clientName, err)
+			log.Printf("%s: Error sending chat message: %v", clientName, err)
 			return
 		}
-		log.Printf("Client %s: %s", clientName, ack.Message)
+		log.Printf(ack.Message)
 	}
 }
 
