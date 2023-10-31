@@ -72,8 +72,8 @@ var clientConnections []*grpc.ClientConn
 
 func main() {
 
-	// f := setLog() //uncomment this line to log to a log.txt file instead of the console
-	// defer f.Close()
+	f := setLog() //uncomment this line to log to a log.txt file instead of the console
+	defer f.Close()
 
 	// This parses the flags and sets the correct/given corresponding values.
 	flag.Parse()

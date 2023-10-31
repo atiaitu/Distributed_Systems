@@ -30,9 +30,9 @@ func main() {
 	// Parse flag/arguments
 	flag.Parse()
 
-	// Log to file instead of console
-	// f := setLog()
-	// defer f.Close()
+	//Log to file instead of console
+	f := setLog()
+	defer f.Close()
 
 	// Connect to the server and close the connection when the program exits
 	ConnectToServer()
