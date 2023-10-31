@@ -85,19 +85,24 @@ func parseInput(joined bool) {
 				log.Println("You cannot leave before joining. Use /j to join the chat.")
 			}
 		} else if strings.HasPrefix(input, "/j") {
-			// Create the bidirectional streaming RPC for message reception.
-			chatStream, err := server.ChatStream(context.Background())
 
-			// Start a goroutine to receive and process messages from the server.
-			joined = true
-			go receiveMessages(chatStream, stopRoutine)
-			if err != nil {
-				log.Printf("Client %s: Error creating chat stream: %v", *clientsName, err)
-				return
+			if !joined {
+				// Create the bidirectional streaming RPC for message reception.
+				chatStream, err := server.ChatStream(context.Background())
+
+				// Start a goroutine to receive and process messages from the server.
+				joined = true
+				go receiveMessages(chatStream, stopRoutine)
+				if err != nil {
+					log.Printf("Client %s: Error creating chat stream: %v", *clientsName, err)
+					return
+				}
+
+				// Send a join message to the server
+				sendJoinMessage()
+			} else if joined {
+				log.Println("You cannot join twice. Use /l to leave")
 			}
-
-			// Send a join message to the server
-			sendJoinMessage()
 		}
 	}
 }
