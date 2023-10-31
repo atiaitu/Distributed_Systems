@@ -114,15 +114,16 @@ func launchServer() {
 	// code here is unreachable because grpcServer.Serve occupies the current thread.
 }
 
-func (s *Server) SendChatMessage(ctx context.Context, message *gRPC.ChatMessage) (*gRPC.Ack1, error) {
-	// Logs in the terminal when a client sends a message
-	log.Printf("Client %s sent message: %s at Lamport time L %v", message.ClientName, message.Message, ServerTimestamp)
+func (s *Server) SendChatMessage(ctx context.Context, message *gRPC.ChatMessage) (*gRPC.Ack, error) {
 
 	// Broadcast the message to all connected clients
 	s.BroadcastChatMessage(message)
 
+	// Logs in the terminal when a client sends a message
+	log.Printf("Client %s sent message: %s at Lamport time L %v", message.ClientName, message.Message, ServerTimestamp-1) //minus one, because the broadcastchatmessage updates the serverTimestamp after, so we need to correct for that
+
 	// Return an acknowledgment
-	return &gRPC.Ack1{Message: "Chat message sent successfully "}, nil
+	return &gRPC.Ack{Message: "Chat message sent successfully ", Timestamp: ServerTimestamp - 1}, nil
 }
 
 // BroadcastChatMessage sends an acknowledgment message to all connected clients.
@@ -130,9 +131,14 @@ func (s *Server) BroadcastChatMessage(message *gRPC.ChatMessage) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	var time int64 = max(message.Timestamp, ServerTimestamp) + 1
-	var serverTimeStamp string = strconv.FormatInt(time, 10)
-	ServerTimestamp = time + 1
+	var time1 int64 = max(message.Timestamp, ServerTimestamp)
+	var servertimeStamp string = strconv.FormatInt(time1, 10)
+
+	log.Printf("Participant " + message.ClientName + " have requested to requested to publish a message at Lamport time L " + servertimeStamp)
+
+	var time2 int64 = max(message.Timestamp, ServerTimestamp) + 1
+	var serverTimeStamp string = strconv.FormatInt(time2, 10)
+	ServerTimestamp = time2 + 1
 
 	JoinMessage := &gRPC.ChatMessage{
 		Message: message.ClientName + " published a message at Lamport time L " + serverTimeStamp + " : " + message.Message,
@@ -153,11 +159,16 @@ func (s *Server) addClient(clientName string) {
 	s.mutex.Unlock()
 }
 
-func (s *Server) BroadcastJoinedClient(clientName string, timestamp int64) gRPC.Ack1 {
+func (s *Server) BroadcastJoinedClient(clientName string, timestamp int64) gRPC.Ack {
 
-	var time int64 = max(timestamp, ServerTimestamp) + 1
-	var serverTimeStamp string = strconv.FormatInt(time, 10)
-	ServerTimestamp = time +1
+	var time1 int64 = max(timestamp, ServerTimestamp)
+	var servertimeStamp string = strconv.FormatInt(time1, 10)
+
+	log.Printf("Participant " + clientName + " have requested to join at Lamport time L " + servertimeStamp)
+
+	var time2 int64 = max(timestamp, ServerTimestamp) + 1
+	var serverTimeStamp string = strconv.FormatInt(time2, 10)
+	ServerTimestamp = time2 + 1
 
 	JoinMessage := &gRPC.ChatMessage{
 		Message: "Participant " + clientName + " joined Chitty-Chat at Lamport time L " + serverTimeStamp,
@@ -172,14 +183,19 @@ func (s *Server) BroadcastJoinedClient(clientName string, timestamp int64) gRPC.
 
 	log.Printf(JoinMessage.Message)
 
-	return gRPC.Ack1{Message: JoinMessage.Message, Timestamp: timestamp}
+	return gRPC.Ack{Message: JoinMessage.Message, Timestamp: timestamp}
 }
 
-func (s *Server) BroadcastClientLeave(clientName string, timestamp int64) gRPC.Ack1 {
+func (s *Server) BroadcastClientLeave(clientName string, timestamp int64) gRPC.Ack {
 
-	var time int64 = max(timestamp, ServerTimestamp) + 1
-	var serverTimeStamp string = strconv.FormatInt(time, 10)
-	ServerTimestamp = time + 1
+	var time1 int64 = max(timestamp, ServerTimestamp)
+	var servertimeStamp string = strconv.FormatInt(time1, 10)
+
+	log.Printf("Participant " + clientName + " have requested to requested to leave at Lamport time L " + servertimeStamp)
+
+	var time2 int64 = max(timestamp, ServerTimestamp) + 1
+	var serverTimeStamp string = strconv.FormatInt(time2, 10)
+	ServerTimestamp = time2 + 1
 
 	LeaveMessage := &gRPC.ChatMessage{
 		Message: "Participant " + clientName + " left Chitty-Chat at Lamport time L " + serverTimeStamp,
@@ -194,7 +210,7 @@ func (s *Server) BroadcastClientLeave(clientName string, timestamp int64) gRPC.A
 
 	log.Printf(LeaveMessage.Message)
 
-	return gRPC.Ack1{Message: LeaveMessage.Message, Timestamp: timestamp}
+	return gRPC.Ack{Message: LeaveMessage.Message, Timestamp: timestamp}
 }
 
 // Function to remove a client from the list
@@ -209,7 +225,7 @@ func (s *Server) HandleNewClient(ctx context.Context, message *gRPC.JoinOrLeaveM
 	s.addClient(message.Message)
 	var clientJoinMessage = s.BroadcastJoinedClient(message.Name, message.Timestamp)
 
-	return &gRPC.GiveTimestampAndAck{Message: clientJoinMessage.Message}, nil //ikke færdig, skal implementere lamport
+	return &gRPC.GiveTimestampAndAck{Message: clientJoinMessage.Message, Timestamp: clientJoinMessage.Timestamp}, nil //ikke færdig, skal implementere lamport
 }
 
 // Function to handle a client leaving

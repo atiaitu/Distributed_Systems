@@ -5,46 +5,19 @@ option go_package = "https://github.com/atiaitu/Distributed_Systems/tree/main/Ha
 package proto;
 
 service Chittychat {
-   rpc Increment(Amount) returns (Ack);
-    rpc Send(stream Message) returns (Value);
-    rpc SendChatMessage(ChatMessage) returns (Ack1);
+    rpc SendChatMessage(ChatMessage) returns (Ack);
     rpc HandleNewClient(JoinOrLeaveMessage) returns (GiveTimestampAndAck);
     rpc ChatStream(stream ChatMessage) returns (stream ChatMessage);
     rpc HandleClientLeave(JoinOrLeaveMessage) returns (GiveTimestampAndAck);
 }
 
-// Amount is a type containing a string and int. They are intialized as the first and second parameter value.
-message Amount {
-    string clientName = 1;
-    int64 value = 2;
-}
-
-message ClientName {
-    string clientName = 1;
-}
-
 message Ack {
-    int64 newValue = 1;
-}
-
-message Ack1 {
     string message = 1;
     int64 timestamp = 2;
 }
 
 message ChatMessage {
-    string clientName = 1;
-    string message = 2;
-    int64 timestamp = 3;
-}
-
-message Message {
-    string clientName = 1;
-    string message = 2;
-}
-
-message Value {
-    string message = 1;
+    
 }
 
 message JoinOrLeaveMessage {

@@ -1,2 +1,10 @@
-2023/10/31 21:21:59 Server default: Attempts to create listener on port 5400
-2023/10/31 21:21:59 Server default: Listening at 127.0.0.1:5400
+2023/10/31 23:18:09 Server default: Attempts to create listener on port 5400
+2023/10/31 23:18:09 Server default: Listening at 127.0.0.1:5400
+2023/10/31 23:18:14 Participant karl have requested to join at Lamport time L 1
+2023/10/31 23:18:14 Participant karl joined Chitty-Chat at Lamport time L 2
+2023/10/31 23:18:16 Participant karl have requested to requested to publish a message at Lamport time L 3
+2023/10/31 23:18:16 Client karl sent message: he at Lamport time L 4
+2023/10/31 23:18:21 Participant Adam have requested to join at Lamport time L 5
+2023/10/31 23:18:21 Participant Adam joined Chitty-Chat at Lamport time L 6
+2023/10/31 23:18:25 Participant Adam have requested to requested to publish a message at Lamport time L 7
+2023/10/31 23:18:25 Client Adam sent message: ok at Lamport time L 8

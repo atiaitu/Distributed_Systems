@@ -24,7 +24,7 @@ var serverPort = flag.String("server", "5400", "Tcp server")
 var server gRPC.ChittychatClient //the server
 var ServerConn *grpc.ClientConn  //the server connection
 var stopRoutine = make(chan bool)
-var lamportTimestamp int64 = 0
+var clientlamportTimestamp int64
 
 func main() {
 	// Parse flag/arguments
@@ -68,7 +68,7 @@ func parseInput(joined bool) {
 
 		if strings.HasPrefix(input, "/m") {
 			if joined {
-				// Extract the message text after "/message"
+				// removing "/m"
 				message := strings.TrimSpace(input[len("/m"):])
 				sendChatMessage(*clientsName, message)
 
@@ -87,11 +87,12 @@ func parseInput(joined bool) {
 		} else if strings.HasPrefix(input, "/j") {
 
 			if !joined {
-				// Create the bidirectional streaming RPC for message reception.
+				//creating the bidirectional streaming RPC.
 				chatStream, err := server.ChatStream(context.Background())
 
-				// Start a goroutine to receive and process messages from the server.
 				joined = true
+
+				//starting a goroutine to receive and process messages from the server.
 				go receiveMessages(chatStream, stopRoutine)
 				if err != nil {
 					log.Printf("Client %s: Error creating chat stream: %v", *clientsName, err)
@@ -118,7 +119,7 @@ func receiveMessages(chatStream gRPC.Chittychat_ChatStreamClient, stopRoutine ch
 				return
 			}
 			ack, err := chatStream.Recv()
-			lamportTimestamp = ack.Timestamp
+			clientlamportTimestamp = ack.Timestamp
 
 			if ack.ClientName != *clientsName {
 				if err != nil {
@@ -135,11 +136,12 @@ func receiveMessages(chatStream gRPC.Chittychat_ChatStreamClient, stopRoutine ch
 func sendJoinMessage() {
 
 	//increment timestamp before event
-	lamportTimestamp++
+	clientlamportTimestamp++
 
 	JoinMessage := &gRPC.JoinOrLeaveMessage{
 		Name:      *clientsName,
-		Timestamp: lamportTimestamp,
+		Message:   *clientsName + " want to join the server",
+		Timestamp: clientlamportTimestamp,
 	}
 
 	// Make a gRPC call to send the chat message
@@ -149,15 +151,18 @@ func sendJoinMessage() {
 		return
 	}
 
-	if ack.Message == "hej" {
-	}
+	clientlamportTimestamp = ack.Timestamp
+
 }
 
 func sendLeaveMessage() {
 
+	//increment timestamp before event
+	clientlamportTimestamp++
+
 	LeaveMessage := &gRPC.JoinOrLeaveMessage{
 		Name:      *clientsName,
-		Timestamp: lamportTimestamp,
+		Timestamp: clientlamportTimestamp,
 	}
 
 	// Make a gRPC call to send the chat message
@@ -166,16 +171,19 @@ func sendLeaveMessage() {
 		log.Printf("Client %s: Error sending join message: %v", *clientsName, err)
 		return
 	}
-	if ack.Message == "hej" {
-	} //so the program can run
+
+	clientlamportTimestamp = ack.Timestamp
+
 }
 
 func sendChatMessage(clientName string, message string) {
-	lamportTimestamp++
+
+	clientlamportTimestamp++
+
 	chatMessage := &gRPC.ChatMessage{
 		ClientName: clientName,
 		Message:    message,
-		Timestamp:  lamportTimestamp,
+		Timestamp:  clientlamportTimestamp,
 	}
 
 	// Make a gRPC call to send the chat message
@@ -188,7 +196,10 @@ func sendChatMessage(clientName string, message string) {
 			return
 		}
 		if ack.Message == "hej" {
-		} //so the program can run
+
+		}
+
+		clientlamportTimestamp = ack.Timestamp
 	}
 }
 

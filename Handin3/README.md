@@ -10,3 +10,5 @@ when the clients are connected to the server, they can join, leave and publish m
 	Use /m <your message> to write a message
 	Use /l to leave the chatroom
 
+The server keeps a log of alle interactiong called log.txt, and it is under the folder server
+
