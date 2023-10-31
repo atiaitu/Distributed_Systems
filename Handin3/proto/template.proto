@@ -17,7 +17,9 @@ message Ack {
 }
 
 message ChatMessage {
-    
+    string clientName = 1;
+    string message = 2;
+    int64 timestamp = 3;
 }
 
 message JoinOrLeaveMessage {
