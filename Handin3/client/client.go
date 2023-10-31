@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strconv"
 	"strings"
 
 	// this has to be the same as the go.mod module,
@@ -43,101 +42,6 @@ func main() {
 	var joined = false
 
 	parseInput(joined)
-}
-
-func receiveMessages(chatStream gRPC.Chittychat_ChatStreamClient, stopRoutine chan bool) {
-	for {
-		select {
-		case <-stopRoutine:
-			return
-		default:
-			if chatStream == nil {
-				// Ensure that chatStream is not nil before accessing it
-				return
-			}
-			ack, err := chatStream.Recv()
-
-			var time int64 = max(ack.Timestamp, lamportTimestamp) + 1
-			var timeAsString string = strconv.FormatInt(time, 10)
-			lamportTimestamp = time
-			var message string = ack.Message + " " + timeAsString
-
-			if ack.ClientName != *clientsName {
-				if err != nil {
-					log.Printf("Error receiving message from server: %v", err)
-					return
-				}
-
-				log.Printf("%s: %s", ack.ClientName, message)
-			}
-		}
-	}
-}
-
-func sendJoinMessage() {
-
-	//increment timestamp before event
-	lamportTimestamp++
-
-	JoinMessage := &gRPC.JoinOrLeaveMessage{
-		Name:      *clientsName,
-		Timestamp: lamportTimestamp,
-	}
-
-	// Make a gRPC call to send the chat message
-	ack, err := server.HandleNewClient(context.Background(), JoinMessage)
-	if err != nil {
-		log.Printf("Client %s: Error sending join message: %v", *clientsName, err)
-		return
-	}
-
-	if ack.Message == "hej" {
-	}
-}
-
-func sendLeaveMessage() {
-	//increment timestamp before event
-	lamportTimestamp++
-
-	LeaveMessage := &gRPC.JoinOrLeaveMessage{
-		Name:      *clientsName,
-		Timestamp: lamportTimestamp,
-	}
-
-	// Make a gRPC call to send the chat message
-	ack, err := server.HandleClientLeave(context.Background(), LeaveMessage)
-	if err != nil {
-		log.Printf("Client %s: Error sending join message: %v", *clientsName, err)
-		return
-	}
-	if ack.Message == "hej" {
-	} //so the program can run
-}
-
-// connect to server
-func ConnectToServer() {
-
-	//dial options
-	//the server is not using TLS, so we use insecure credentials
-	//(should be fine for local testing but not in the real world)
-	opts := []grpc.DialOption{
-		grpc.WithBlock(),
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	}
-
-	//dial the server, with the flag "server", to get a connection to it
-	log.Printf("client %s: Attempts to dial on port %s\n", *clientsName, *serverPort)
-	conn, err := grpc.Dial(fmt.Sprintf(":%s", *serverPort), opts...)
-	if err != nil {
-		log.Printf("Fail to Dial : %v", err)
-		return
-	}
-
-	// makes a client from the server connection and saves the connection
-	// and prints rather or not the connection was is READY
-	server = gRPC.NewChittychatClient(conn)
-	ServerConn = conn
-	log.Println("the connection is:", conn.GetState().String())
 }
 
 func parseInput(joined bool) {
@@ -198,10 +102,75 @@ func parseInput(joined bool) {
 	}
 }
 
+func receiveMessages(chatStream gRPC.Chittychat_ChatStreamClient, stopRoutine chan bool) {
+	for {
+		select {
+		case <-stopRoutine:
+			return
+		default:
+			if chatStream == nil {
+				// Ensure that chatStream is not nil before accessing it
+				return
+			}
+			ack, err := chatStream.Recv()
+			lamportTimestamp = ack.Timestamp
+
+			if ack.ClientName != *clientsName {
+				if err != nil {
+					log.Printf("Error receiving message from server: %v", err)
+					return
+				}
+
+				log.Printf("%s: %s", ack.ClientName, ack.Message)
+			}
+		}
+	}
+}
+
+func sendJoinMessage() {
+
+	//increment timestamp before event
+	lamportTimestamp++
+
+	JoinMessage := &gRPC.JoinOrLeaveMessage{
+		Name:      *clientsName,
+		Timestamp: lamportTimestamp,
+	}
+
+	// Make a gRPC call to send the chat message
+	ack, err := server.HandleNewClient(context.Background(), JoinMessage)
+	if err != nil {
+		log.Printf("Client %s: Error sending join message: %v", *clientsName, err)
+		return
+	}
+
+	if ack.Message == "hej" {
+	}
+}
+
+func sendLeaveMessage() {
+
+	LeaveMessage := &gRPC.JoinOrLeaveMessage{
+		Name:      *clientsName,
+		Timestamp: lamportTimestamp,
+	}
+
+	// Make a gRPC call to send the chat message
+	ack, err := server.HandleClientLeave(context.Background(), LeaveMessage)
+	if err != nil {
+		log.Printf("Client %s: Error sending join message: %v", *clientsName, err)
+		return
+	}
+	if ack.Message == "hej" {
+	} //so the program can run
+}
+
 func sendChatMessage(clientName string, message string) {
+	lamportTimestamp++
 	chatMessage := &gRPC.ChatMessage{
 		ClientName: clientName,
 		Message:    message,
+		Timestamp:  lamportTimestamp,
 	}
 
 	// Make a gRPC call to send the chat message
@@ -213,8 +182,35 @@ func sendChatMessage(clientName string, message string) {
 			log.Printf("%s: Error sending chat message: %v", clientName, err)
 			return
 		}
-		log.Printf(ack.Message)
+		if ack.Message == "hej" {
+		} //so the program can run
 	}
+}
+
+// connect to server
+func ConnectToServer() {
+
+	//dial options
+	//the server is not using TLS, so we use insecure credentials
+	//(should be fine for local testing but not in the real world)
+	opts := []grpc.DialOption{
+		grpc.WithBlock(),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	}
+
+	//dial the server, with the flag "server", to get a connection to it
+	log.Printf("client %s: Attempts to dial on port %s\n", *clientsName, *serverPort)
+	conn, err := grpc.Dial(fmt.Sprintf(":%s", *serverPort), opts...)
+	if err != nil {
+		log.Printf("Fail to Dial : %v", err)
+		return
+	}
+
+	// makes a client from the server connection and saves the connection
+	// and prints rather or not the connection was is READY
+	server = gRPC.NewChittychatClient(conn)
+	ServerConn = conn
+	log.Println("the connection is:", conn.GetState().String())
 }
 
 // Function which returns a true boolean if the connection to the server is ready, and false if it's not.

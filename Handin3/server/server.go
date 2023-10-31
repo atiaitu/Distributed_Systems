@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"strconv"
 	"sync"
 
 	// this has to be the same as the go.mod module,
@@ -15,6 +16,8 @@ import (
 
 	"google.golang.org/grpc"
 )
+
+var ServerTimestamp int64 = 0
 
 type Server struct {
 	gRPC.UnimplementedChittychatServer
@@ -26,10 +29,6 @@ type Server struct {
 	mutex          sync.Mutex // used to lock the server to avoid race conditions.
 
 	clients map[gRPC.Chittychat_ChatStreamServer]bool
-}
-
-type Client struct {
-	conn gRPC.ChittychatClient // Replace with the actual gRPC client type
 }
 
 // Add connected client streams to the map when they join.
@@ -115,28 +114,15 @@ func launchServer() {
 	// code here is unreachable because grpcServer.Serve occupies the current thread.
 }
 
-// The method format can be found in the pb.go file. If the format is wrong, the server type will give an error.
-func (s *Server) Increment(ctx context.Context, Amount *gRPC.Amount) (*gRPC.Ack, error) {
-	// locks the server ensuring no one else can increment the value at the same time.
-	// and unlocks the server when the method is done.
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	// increments the value by the amount given in the request,
-	// and returns the new value.
-	s.incrementValue += int64(Amount.GetValue())
-	return &gRPC.Ack{NewValue: s.incrementValue}, nil
-}
-
 func (s *Server) SendChatMessage(ctx context.Context, message *gRPC.ChatMessage) (*gRPC.Ack1, error) {
 	// Logs in the terminal when a client sends a message
-	log.Printf("Client %s sent message: %s", message.ClientName, message.Message)
+	log.Printf("Client %s sent message: %s at Lamport time L %v", message.ClientName, message.Message, ServerTimestamp)
 
 	// Broadcast the message to all connected clients
 	s.BroadcastChatMessage(message)
 
 	// Return an acknowledgment
-	return &gRPC.Ack1{Message: "Chat message sent successfully"}, nil
+	return &gRPC.Ack1{Message: "Chat message sent successfully "}, nil
 }
 
 // BroadcastChatMessage sends an acknowledgment message to all connected clients.
@@ -144,9 +130,16 @@ func (s *Server) BroadcastChatMessage(message *gRPC.ChatMessage) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
+	var time int64 = max(message.Timestamp, ServerTimestamp) + 1
+	var serverTimeStamp string = strconv.FormatInt(time, 10)
+	ServerTimestamp = time + 1
+
+	JoinMessage := &gRPC.ChatMessage{
+		Message: message.ClientName + " published a message at Lamport time L " + serverTimeStamp + " : " + message.Message,
+	}
+
 	for clientStream := range s.clients {
-		ackMessage := &gRPC.ChatMessage{Message: message.Message, ClientName: message.ClientName}
-		if err := clientStream.Send(ackMessage); err != nil {
+		if err := clientStream.Send(JoinMessage); err != nil {
 			log.Printf("Error sending message to client: %v", err)
 			// Handle the error, e.g., remove the disconnected client from the list.
 		}
@@ -161,8 +154,13 @@ func (s *Server) addClient(clientName string) {
 }
 
 func (s *Server) BroadcastJoinedClient(clientName string, timestamp int64) gRPC.Ack1 {
+
+	var time int64 = max(timestamp, ServerTimestamp) + 1
+	var serverTimeStamp string = strconv.FormatInt(time, 10)
+	ServerTimestamp = time +1
+
 	JoinMessage := &gRPC.ChatMessage{
-		Message: "Participant " + clientName + " joined Chitty-Chat at Lamport time L ",
+		Message: "Participant " + clientName + " joined Chitty-Chat at Lamport time L " + serverTimeStamp,
 	}
 
 	for clientStream := range s.clients {
@@ -178,8 +176,13 @@ func (s *Server) BroadcastJoinedClient(clientName string, timestamp int64) gRPC.
 }
 
 func (s *Server) BroadcastClientLeave(clientName string, timestamp int64) gRPC.Ack1 {
+
+	var time int64 = max(timestamp, ServerTimestamp) + 1
+	var serverTimeStamp string = strconv.FormatInt(time, 10)
+	ServerTimestamp = time + 1
+
 	LeaveMessage := &gRPC.ChatMessage{
-		Message: "Participant " + clientName + " left Chitty-Chat at Lamport time L ",
+		Message: "Participant " + clientName + " left Chitty-Chat at Lamport time L " + serverTimeStamp,
 	}
 
 	for clientStream := range s.clients {
@@ -205,7 +208,7 @@ func (s *Server) removeClient(clientName string) {
 func (s *Server) HandleNewClient(ctx context.Context, message *gRPC.JoinOrLeaveMessage) (*gRPC.GiveTimestampAndAck, error) {
 	s.addClient(message.Message)
 	var clientJoinMessage = s.BroadcastJoinedClient(message.Name, message.Timestamp)
-	// You can perform additional actions here when a new client joins.
+
 	return &gRPC.GiveTimestampAndAck{Message: clientJoinMessage.Message}, nil //ikke færdig, skal implementere lamport
 }
 
@@ -213,7 +216,7 @@ func (s *Server) HandleNewClient(ctx context.Context, message *gRPC.JoinOrLeaveM
 func (s *Server) HandleClientLeave(ctx context.Context, LeaveMessage *gRPC.JoinOrLeaveMessage) (*gRPC.GiveTimestampAndAck, error) {
 	s.removeClient(LeaveMessage.Message)
 	var clientLeaveMessage = s.BroadcastClientLeave(LeaveMessage.Name, LeaveMessage.Timestamp)
-	// You can perform additional actions here when a client leaves.
+
 	return &gRPC.GiveTimestampAndAck{Message: clientLeaveMessage.Message}, nil
 }
 
