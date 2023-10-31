@@ -1,3 +1,5 @@
+We have used veroius websites and ChatGPT to help us problemsolve, when TA's weren't avaiable
+
 For being able to even start the program, you need to open the Handin3 folder in visual studio code :D
 
 For 1 server and 3 clients:
