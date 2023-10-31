@@ -25,14 +25,15 @@ var serverPort = flag.String("server", "5400", "Tcp server")
 var server gRPC.ChittychatClient //the server
 var ServerConn *grpc.ClientConn  //the server connection
 var stopRoutine = make(chan bool)
+var lamportTimestamp int64 = 0
 
 func main() {
 	// Parse flag/arguments
 	flag.Parse()
 
 	//Log to file instead of console
-	f := setLog()
-	defer f.Close()
+	//f := setLog()
+	//defer f.Close()
 
 	// Connect to the server and close the connection when the program exits
 	ConnectToServer()
@@ -55,41 +56,56 @@ func receiveMessages(chatStream gRPC.Chittychat_ChatStreamClient, stopRoutine ch
 				return
 			}
 			ack, err := chatStream.Recv()
+
+			var time int64 = max(ack.Timestamp, lamportTimestamp) + 1
+			var timeAsString string = strconv.FormatInt(time, 10)
+			lamportTimestamp = time
+			var message string = ack.Message + " " + timeAsString
+
 			if ack.ClientName != *clientsName {
 				if err != nil {
 					log.Printf("Error receiving message from server: %v", err)
 					return
 				}
 
-				log.Printf("%s: %s", ack.ClientName, ack.Message)
+				log.Printf("%s: %s", ack.ClientName, message)
 			}
 		}
 	}
 }
 
-func sendJoinMessage(message string) {
-	chatMessage := &gRPC.JoinMessage{
-		Name:    *clientsName,
-		Message: message,
+func sendJoinMessage() {
+
+	//increment timestamp before event
+	lamportTimestamp++
+
+	JoinMessage := &gRPC.JoinOrLeaveMessage{
+		Name:      *clientsName,
+		Timestamp: lamportTimestamp,
 	}
 
 	// Make a gRPC call to send the chat message
-	ack, err := server.HandleNewClient(context.Background(), chatMessage)
+	ack, err := server.HandleNewClient(context.Background(), JoinMessage)
 	if err != nil {
 		log.Printf("Client %s: Error sending join message: %v", *clientsName, err)
 		return
 	}
 
-	log.Printf(ack.Message)
+	if ack.Message == "hej" {
+	}
 }
 
 func sendLeaveMessage() {
-	client := &gRPC.ClientName{
-		ClientName: *clientsName,
+	//increment timestamp before event
+	lamportTimestamp++
+
+	LeaveMessage := &gRPC.JoinOrLeaveMessage{
+		Name:      *clientsName,
+		Timestamp: lamportTimestamp,
 	}
 
 	// Make a gRPC call to send the chat message
-	ack, err := server.HandleClientLeave(context.Background(), client)
+	ack, err := server.HandleClientLeave(context.Background(), LeaveMessage)
 	if err != nil {
 		log.Printf("Client %s: Error sending join message: %v", *clientsName, err)
 		return
@@ -177,40 +193,8 @@ func parseInput(joined bool) {
 			}
 
 			// Send a join message to the server
-			joinMessage := fmt.Sprintf("Participant %s joined Chitty-Chat at Lamport time %s", *clientsName, *serverPort) //skal ændres til lamporttime istedet for serverport
-			sendJoinMessage(joinMessage)
-		} else {
-			val, err := strconv.ParseInt(input, 10, 64)
-			if err != nil {
-				log.Printf("Invalid input: %s", input)
-				continue
-			}
-			incrementVal(val)
+			sendJoinMessage()
 		}
-	}
-}
-
-func incrementVal(val int64) {
-	//create amount type
-	amount := &gRPC.Amount{
-		ClientName: *clientsName,
-		Value:      val, //cast from int to int32
-	}
-
-	//Make gRPC call to server with amount, and recieve acknowlegdement back.
-	ack, err := server.Increment(context.Background(), amount)
-	if err != nil {
-		log.Printf("Client %s: no response from the server, attempting to reconnect", *clientsName)
-		log.Println(err)
-	}
-
-	// check if the server has handled the request correctly
-	if ack.NewValue >= val {
-		fmt.Printf("Success, the new value is now %d\n", ack.NewValue)
-	} else {
-		// something could be added here to handle the error
-		// but hopefully this will never be reached
-		fmt.Println("Oh no something went wrong :(")
 	}
 }
 

@@ -157,35 +157,41 @@ func (s *Server) BroadcastChatMessage(message *gRPC.ChatMessage) {
 func (s *Server) addClient(clientName string) {
 	s.mutex.Lock()
 	clientsList[clientName] = struct{}{}
-	s.BroadcastJoinedClient(clientName)
 	s.mutex.Unlock()
 }
 
-func (s *Server) BroadcastJoinedClient(clientName string) {
+func (s *Server) BroadcastJoinedClient(clientName string, timestamp int64) gRPC.Ack1 {
+	JoinMessage := &gRPC.ChatMessage{
+		Message: "Participant " + clientName + " joined Chitty-Chat at Lamport time L ",
+	}
+
 	for clientStream := range s.clients {
-		ackMessage := &gRPC.ChatMessage{ClientName: clientName}
-		if err := clientStream.Send(ackMessage); err != nil {
+		if err := clientStream.Send(JoinMessage); err != nil {
 			log.Printf("Error sending message to client: %v", err)
 			// Handle the error, e.g., remove the disconnected client from the list.
 		}
 	}
+
+	log.Printf(JoinMessage.Message)
+
+	return gRPC.Ack1{Message: JoinMessage.Message, Timestamp: timestamp}
 }
 
-func (s *Server) BroadcastClientLeave(clientName string) gRPC.Ack1 {
-	client := &gRPC.ChatMessage{
-		Message: "Participant " + clientName + " left Chitty-Chat at Lamport time L",
+func (s *Server) BroadcastClientLeave(clientName string, timestamp int64) gRPC.Ack1 {
+	LeaveMessage := &gRPC.ChatMessage{
+		Message: "Participant " + clientName + " left Chitty-Chat at Lamport time L ",
 	}
 
 	for clientStream := range s.clients {
-		if err := clientStream.Send(client); err != nil {
+		if err := clientStream.Send(LeaveMessage); err != nil {
 			log.Printf("Error sending message to client: %v", err)
 			// Handle the error, e.g., remove the disconnected client from the list.
 		}
 	}
 
-	log.Printf(client.Message)
+	log.Printf(LeaveMessage.Message)
 
-	return gRPC.Ack1{Message: client.Message}
+	return gRPC.Ack1{Message: LeaveMessage.Message, Timestamp: timestamp}
 }
 
 // Function to remove a client from the list
@@ -196,20 +202,19 @@ func (s *Server) removeClient(clientName string) {
 }
 
 // Function to handle a new client joining
-func (s *Server) HandleNewClient(ctx context.Context, message *gRPC.JoinMessage) (*gRPC.GiveTimestampAndAck, error) {
+func (s *Server) HandleNewClient(ctx context.Context, message *gRPC.JoinOrLeaveMessage) (*gRPC.GiveTimestampAndAck, error) {
 	s.addClient(message.Message)
-	log.Printf("%s", message.Message)
+	var clientJoinMessage = s.BroadcastJoinedClient(message.Name, message.Timestamp)
 	// You can perform additional actions here when a new client joins.
-	return &gRPC.GiveTimestampAndAck{Message: "You joined the server succesfully", Timestamp: 3}, nil //ikke færdig, skal implementere lamport
+	return &gRPC.GiveTimestampAndAck{Message: clientJoinMessage.Message}, nil //ikke færdig, skal implementere lamport
 }
 
 // Function to handle a client leaving
-func (s *Server) HandleClientLeave(ctx context.Context, clientname *gRPC.ClientName) (*gRPC.Ack1, error) {
-	var clientName = clientname.ClientName
-	s.removeClient(clientName)
-	var clientLeaveMessage = s.BroadcastClientLeave(clientName)
+func (s *Server) HandleClientLeave(ctx context.Context, LeaveMessage *gRPC.JoinOrLeaveMessage) (*gRPC.GiveTimestampAndAck, error) {
+	s.removeClient(LeaveMessage.Message)
+	var clientLeaveMessage = s.BroadcastClientLeave(LeaveMessage.Name, LeaveMessage.Timestamp)
 	// You can perform additional actions here when a client leaves.
-	return &gRPC.Ack1{Message: clientLeaveMessage.Message}, nil
+	return &gRPC.GiveTimestampAndAck{Message: clientLeaveMessage.Message}, nil
 }
 
 // Get preferred outbound ip of this machine

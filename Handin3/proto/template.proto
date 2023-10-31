@@ -8,9 +8,9 @@ service Chittychat {
    rpc Increment(Amount) returns (Ack);
     rpc Send(stream Message) returns (Value);
     rpc SendChatMessage(ChatMessage) returns (Ack1);
-    rpc HandleNewClient(JoinMessage) returns (GiveTimestampAndAck);
+    rpc HandleNewClient(JoinOrLeaveMessage) returns (GiveTimestampAndAck);
     rpc ChatStream(stream ChatMessage) returns (stream ChatMessage);
-    rpc HandleClientLeave(ClientName) returns (Ack1);
+    rpc HandleClientLeave(JoinOrLeaveMessage) returns (GiveTimestampAndAck);
 }
 
 // Amount is a type containing a string and int. They are intialized as the first and second parameter value.
@@ -29,6 +29,7 @@ message Ack {
 
 message Ack1 {
     string message = 1;
+    int64 timestamp = 2;
 }
 
 message ChatMessage {
@@ -46,9 +47,10 @@ message Value {
     string message = 1;
 }
 
-message JoinMessage {
+message JoinOrLeaveMessage {
     string name = 1;
     string message = 2;
+    int64 timestamp = 3;
 }
 
 message GiveTimestampAndAck {
