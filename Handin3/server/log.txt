@@ -1,10 +1,13 @@
-2023/10/31 23:18:09 Server default: Attempts to create listener on port 5400
-2023/10/31 23:18:09 Server default: Listening at 127.0.0.1:5400
-2023/10/31 23:18:14 Participant karl have requested to join at Lamport time L 1
-2023/10/31 23:18:14 Participant karl joined Chitty-Chat at Lamport time L 2
-2023/10/31 23:18:16 Participant karl have requested to requested to publish a message at Lamport time L 3
-2023/10/31 23:18:16 Client karl sent message: he at Lamport time L 4
-2023/10/31 23:18:21 Participant Adam have requested to join at Lamport time L 5
-2023/10/31 23:18:21 Participant Adam joined Chitty-Chat at Lamport time L 6
-2023/10/31 23:18:25 Participant Adam have requested to requested to publish a message at Lamport time L 7
-2023/10/31 23:18:25 Client Adam sent message: ok at Lamport time L 8
+2023/10/31 23:21:03 Server default: Attempts to create listener on port 5400
+2023/10/31 23:21:03 Server default: Listening at 127.0.0.1:5400
+2023/10/31 23:21:08 Participant Adam have requested to join at Lamport time L 1
+2023/10/31 23:21:08 Participant Adam joined Chitty-Chat at Lamport time L 2
+2023/10/31 23:21:10 Participant Adam have requested to requested to publish a message at Lamport time L 3
+2023/10/31 23:21:10 Client Adam sent message: hej at Lamport time L 4
+2023/10/31 23:21:12 Participant Adam have requested to requested to publish a message at Lamport time L 5
+2023/10/31 23:21:12 Client Adam sent message: ok at Lamport time L 6
+2023/10/31 23:21:27 Participant karl have requested to join at Lamport time L 7
+2023/10/31 23:21:27 Participant karl joined Chitty-Chat at Lamport time L 8
+2023/10/31 23:21:30 Participant karl have requested to requested to publish a message at Lamport time L 9
+2023/10/31 23:21:30 Client karl sent message: ehj at Lamport time L 10
+2023/10/31 23:23:50 Client disconnected: rpc error: code = Canceled desc = context canceled

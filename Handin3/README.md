@@ -1,3 +1,5 @@
+For being able to even start the program, you need to open the Handin3 folder in visual studio code :D
+
 For 1 server and 3 clients:
 - make 4 bash terminals
 - 3 of them needs to find its way into the client folder using "cd <something>" and "cd .." to move forward and backwords
