@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.3.0
 // - protoc             v4.24.3
-// source: proto/proto.proto
+// source: proto.proto
 
 package proto
 
@@ -63,5 +63,5 @@ var PeerToPeer_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*PeerToPeerServer)(nil),
 	Methods:     []grpc.MethodDesc{},
 	Streams:     []grpc.StreamDesc{},
-	Metadata:    "proto/proto.proto",
+	Metadata:    "proto.proto",
 }
