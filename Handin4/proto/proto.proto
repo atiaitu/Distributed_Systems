@@ -5,5 +5,15 @@ option go_package = "https://github.com/atiaitu/Distributed_Systems/tree/main/Ha
 package proto;
 
 service PeerToPeer {
-    
+    rpc SendMessage (MessageRequest) returns (MessageResponse);
+}
+
+message MessageRequest {
+    string content = 1;
+    string sender_port = 2;
+    string receiverPort = 3;
+}
+
+message MessageResponse {
+    string reply = 1;
 }

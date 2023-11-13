@@ -2,12 +2,15 @@
 // versions:
 // - protoc-gen-go-grpc v1.3.0
 // - protoc             v4.24.3
-// source: proto.proto
+// source: proto/proto.proto
 
 package proto
 
 import (
+	context "context"
 	grpc "google.golang.org/grpc"
+	codes "google.golang.org/grpc/codes"
+	status "google.golang.org/grpc/status"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -15,12 +18,15 @@ import (
 // Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
-const ()
+const (
+	PeerToPeer_SendMessage_FullMethodName = "/proto.PeerToPeer/SendMessage"
+)
 
 // PeerToPeerClient is the client API for PeerToPeer service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type PeerToPeerClient interface {
+	SendMessage(ctx context.Context, in *MessageRequest, opts ...grpc.CallOption) (*MessageResponse, error)
 }
 
 type peerToPeerClient struct {
@@ -31,10 +37,20 @@ func NewPeerToPeerClient(cc grpc.ClientConnInterface) PeerToPeerClient {
 	return &peerToPeerClient{cc}
 }
 
+func (c *peerToPeerClient) SendMessage(ctx context.Context, in *MessageRequest, opts ...grpc.CallOption) (*MessageResponse, error) {
+	out := new(MessageResponse)
+	err := c.cc.Invoke(ctx, PeerToPeer_SendMessage_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // PeerToPeerServer is the server API for PeerToPeer service.
 // All implementations must embed UnimplementedPeerToPeerServer
 // for forward compatibility
 type PeerToPeerServer interface {
+	SendMessage(context.Context, *MessageRequest) (*MessageResponse, error)
 	mustEmbedUnimplementedPeerToPeerServer()
 }
 
@@ -42,6 +58,9 @@ type PeerToPeerServer interface {
 type UnimplementedPeerToPeerServer struct {
 }
 
+func (UnimplementedPeerToPeerServer) SendMessage(context.Context, *MessageRequest) (*MessageResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SendMessage not implemented")
+}
 func (UnimplementedPeerToPeerServer) mustEmbedUnimplementedPeerToPeerServer() {}
 
 // UnsafePeerToPeerServer may be embedded to opt out of forward compatibility for this service.
@@ -55,13 +74,36 @@ func RegisterPeerToPeerServer(s grpc.ServiceRegistrar, srv PeerToPeerServer) {
 	s.RegisterService(&PeerToPeer_ServiceDesc, srv)
 }
 
+func _PeerToPeer_SendMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PeerToPeerServer).SendMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PeerToPeer_SendMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PeerToPeerServer).SendMessage(ctx, req.(*MessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // PeerToPeer_ServiceDesc is the grpc.ServiceDesc for PeerToPeer service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var PeerToPeer_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "proto.PeerToPeer",
 	HandlerType: (*PeerToPeerServer)(nil),
-	Methods:     []grpc.MethodDesc{},
-	Streams:     []grpc.StreamDesc{},
-	Metadata:    "proto.proto",
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "SendMessage",
+			Handler:    _PeerToPeer_SendMessage_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "proto/proto.proto",
 }
