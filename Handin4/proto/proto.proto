@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+option go_package = "https://github.com/atiaitu/Distributed_Systems/tree/main/Handin4/proto";
+
+package proto;
+
+service PeerToPeer {
+    
+}
