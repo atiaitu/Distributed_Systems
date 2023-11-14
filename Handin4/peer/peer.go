@@ -70,9 +70,45 @@ func StartPeer() {
 	}
 
 	go func() {
+		reader := bufio.NewReader(os.Stdin)
+		for {
+			fmt.Print("Enter text: ")
+			text, _ := reader.ReadString('\n')
+			text = strings.TrimSpace(text)
+			if strings.HasPrefix(text, "/add") {
+				newPort := text[len("/add"):]
+				newPeer := &Peer{
+					ID:          fmt.Sprintf("Peer-%s", newPort),
+					Port:        newPort,
+					HasToken:    false,
+					WantsAccess: false,
+					peers:       make(map[string]*Peer),
+				}
+				peer.AddToPeerList(newPeer)
+			} else if strings.HasPrefix(text, "/start") {
+				StartTokenRing(peer)
+			}
+		}
+	}()
+
+	go func() {
+		for {
+			// Listen for incoming messages
+			// You might want to implement message handling logic here
+			time.Sleep(2 * time.Second)
+		}
+	}()
+
+	if err := grpcPeer.Serve(list); err != nil {
+		log.Fatalf("failed to serve %v", err)
+	}
+}
+
+func StartTokenRing(peer *Peer) {
+	go func() {
 		for {
 			peer.CheckIfIWantAccessToCriticalSection()
-			time.Sleep(10 * time.Second)
+			time.Sleep(3 * time.Second)
 		}
 	}()
 
@@ -94,47 +130,21 @@ func StartPeer() {
 			}
 		}
 	}()
-
-	go func() {
-		reader := bufio.NewReader(os.Stdin)
-		for {
-			fmt.Print("Enter text: ")
-			text, _ := reader.ReadString('\n')
-			text = strings.TrimSpace(text)
-			if strings.HasPrefix(text, "/add") {
-				peer.AddToPeerList(text[len("/add"):])
-			}
-		}
-	}()
-
-	go func() {
-		for {
-			// Listen for incoming messages
-			// You might want to implement message handling logic here
-			time.Sleep(2 * time.Second)
-		}
-	}()
-
-	if err := grpcPeer.Serve(list); err != nil {
-		log.Fatalf("failed to serve %v", err)
-	}
 }
 
 func GiveTokenForward(peer *Peer) {
 	nextPort := getNextPort(peer.Port)
 	if peer.portExists(nextPort) {
 		targetPeer := peer.findPeerByPort(nextPort)
+		log.Printf(targetPeer.Port)
 		if targetPeer != nil {
-			targetPeer.HasToken = true
-			peer.SendTokenMessage(targetPeer)
+			peer.SendTokenMessage(nextPort)
 			fmt.Printf("Token given to peer %s\n", targetPeer.Port)
 		}
 	} else if !peer.portExists(nextPort) {
 		lowestPortPeer := peer.findLowestPortPeer()
 		if lowestPortPeer != nil {
-			log.Printf("2")
-			lowestPortPeer.HasToken = true
-			peer.SendTokenMessage(lowestPortPeer)
+			peer.SendTokenMessage(lowestPortPeer.Port)
 			fmt.Printf("Token given to peer %s\n", lowestPortPeer.Port)
 		}
 	} else {
@@ -142,34 +152,56 @@ func GiveTokenForward(peer *Peer) {
 	}
 }
 
-func (p *Peer) HandleMessage(ctx context.Context, req *gRPC.MessageRequest) (*gRPC.MessageResponse, error) {
-	content := req.GetContent()
+func (p *Peer) HandleIncomingMessages(conn net.Conn) {
+	defer conn.Close()
+	reader := bufio.NewReader(conn)
 
-	// Check if the received message is a token and perform actions accordingly
-	if content == "TOKEN_MESSAGE" {
-		// Add your logic here to handle the received token message
-		// For example, set HasToken to true, perform some critical section, etc.
-		p.HasToken = true
-		fmt.Printf("Received Token Message from peer %s\n", req.SenderPort)
+	for {
+		// Read the incoming message
+		message, err := reader.ReadString('\n')
+		if err != nil {
+			log.Printf("Error reading message: %v", err)
+			return
+		}
+
+		// Handle the received message (you may want to add more logic here)
+		log.Printf("Received message: %s", message)
 	}
-
-	reply := fmt.Sprintf("Node %s received: %s", p.ID, content)
-	return &gRPC.MessageResponse{Reply: reply}, nil
 }
 
-func (p *Peer) SendTokenMessage(targetPeer *Peer) {
-	tokenMessageStr := "TOKEN_MESSAGE"
-	response, err := targetPeer.HandleMessage(context.Background(), &gRPC.MessageRequest{
-		Content:      tokenMessageStr,
-		SenderPort:   p.Port,
-		ReceiverPort: targetPeer.Port,
-	})
+func (p *Peer) SendMessage(ctx context.Context, req *proto.MessageRequest) (*proto.MessageResponse, error) {
+	// Handle the received message
+	content := req.Content
+	log.Printf("Received message: %s", content)
+
+	p.HasToken = true
+	time.Sleep(1 * time.Second)
+	// Return a response
+	return &proto.MessageResponse{Reply: "Message received!"}, nil
+}
+
+func (p *Peer) SendTokenMessage(port string) {
+	// Create a gRPC client to connect to the target peer
+	targetAddr := fmt.Sprintf("localhost:%s", port)
+	conn, err := grpc.Dial(targetAddr, grpc.WithInsecure())
 	if err != nil {
-		fmt.Printf("Error sending token message to peer %s: %v\n", targetPeer.Port, err)
+		log.Printf("Error connecting to peer %s: %v", port, err)
+		return
+	}
+	defer conn.Close()
+
+	// Create a gRPC client
+	client := gRPC.NewPeerToPeerClient(conn)
+
+	// Prepare and send the message
+	tokenMessageStr := "TOKEN_MESSAGE"
+	response, err := client.SendMessage(context.Background(), &gRPC.MessageRequest{Content: tokenMessageStr})
+	if err != nil {
+		log.Printf("Error sending token message to peer %s: %v", port, err)
 		return
 	}
 
-	fmt.Printf("Received response from peer %s: %s\n", targetPeer.Port, response.Reply)
+	fmt.Printf("Received response from peer %s: %s\n", port, response.Reply)
 }
 
 func getNextPort(currentPort string) string {
@@ -259,12 +291,14 @@ func (p *Peer) IWantAccess() {
 	}
 }
 
-func (p *Peer) AddToPeerList(text string) {
+func (p *Peer) AddToPeerList(newPeer *Peer) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	p.peerList = append(p.peerList, text)
-	fmt.Printf("Node %s added to peer list: %v\n", p.ID, p.peerList)
+	p.peerList = append(p.peerList, newPeer.Port)
+	p.peers[newPeer.Port] = newPeer
+
+	fmt.Printf("Node %s added to peer list: %v\n", newPeer.ID, p.peerList)
 }
 
 func (p *Peer) Stop() {
