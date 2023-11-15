@@ -1,18 +1,19 @@
 We have used veroius websites and ChatGPT to help us problemsolve, when TA's weren't avaiable
 
-For being able to even start the program, you need to open the Handin3 folder in visual studio code :D
+For being able to even start the program, you need to open the Handin4 folder in visual studio code :D
 
-For 1 server and 3 clients:
-- make 4 bash terminals
-- 3 of them needs to find its way into the client folder using "cd <something>" and "cd .." to move forward and backwords
-- the last one needs to find its way into the server folder
-- in the server terminal, write: "go run server.go -port 5400"
-- in the 3 client terminals, write: "go run client.go -name <name> -server 5400"
+For 3 Peers:
+- make 3 bash terminals
+- all of them needs to find its way into the peer folder using "cd <the folder>" and "cd .." to move forward and backwords
+- in the 3 peer terminals, write: "go run peer.go -name <1, 2, or 3 respectivly> -port <5001, 5002, 5003 respectivly>"
 
-when the clients are connected to the server, they can join, leave and publish messages using these commands:
-	Use /j to join the chatroom
-	Use /m <your message> to write a message
-	Use /l to leave the chatroom
+when the peer are connected, they can add other ports (service discovery) and join the tokenring:
+	Use /add <port> to join the chatroom
+		all peers need to add the other two ports 
+		( example on peer with port 5001 --> 
+			/add 5002
+			/add 5003 )
+	Use /start in all terminals, respecticly with starting port 5001 last
 
-The server keeps a log of alle interactiong called log.txt, and it is under the folder server
+The server keeps a log of alle interactiong called log.txt, and it is under the folder peer
 

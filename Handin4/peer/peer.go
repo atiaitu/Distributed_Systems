@@ -24,7 +24,7 @@ type Peer struct {
 	ID          string
 	Port        string
 	server      *grpc.Server
-	peerList    []string
+	peerPorts   []string
 	peers       map[string]*Peer
 	HasToken    bool
 	WantsAccess bool
@@ -42,7 +42,27 @@ func main() {
 }
 
 func StartPeer() {
-	log.Printf("Server %s: Attempts to create listener on port %s\n", *peerName, *port)
+
+	//open log file
+	logFile, err := os.OpenFile("log.txt", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatalf("Error opening log file: %v", err)
+	}
+	defer logFile.Close()
+
+	// Check if the log file exists
+	fileInfo, err := logFile.Stat()
+	if err == nil && fileInfo.Size() > 0 {
+		// If the log file exists and has content, truncate it
+		if err := os.Truncate("log.txt", 0); err != nil {
+			log.Fatalf("Error truncating log file: %v", err)
+		}
+		log.Printf("Log file truncated\n")
+	}
+
+	log.SetOutput(logFile)
+
+	fmt.Printf("Peer %s: Attempts to create listener on port %s\n", *peerName, *port)
 
 	list, err := net.Listen("tcp", fmt.Sprintf("localhost:%s", *port))
 	if err != nil {
@@ -63,22 +83,22 @@ func StartPeer() {
 
 	gRPC.RegisterPeerToPeerServer(grpcPeer, peer)
 
-	log.Printf("Server %s: Listening at %v\n", *peerName, list.Addr())
+	fmt.Printf("Peer %s: Listening at %v\n", *peerName, list.Addr())
 
-	if *port == "5001" {
-		peer.HasToken = true
-	}
+	fmt.Printf("HELLO PEER\n")
+	fmt.Printf("/add <port number> to add another peer (service discovery)\n")
+	fmt.Printf("/start to start access to tokenring\n")
 
 	go func() {
 		reader := bufio.NewReader(os.Stdin)
 		for {
-			fmt.Print("Enter text: ")
+			fmt.Print("Enter input: ")
 			text, _ := reader.ReadString('\n')
 			text = strings.TrimSpace(text)
 			if strings.HasPrefix(text, "/add") {
-				newPort := text[len("/add"):]
+				newPort := text[len("/add "):]
 				newPeer := &Peer{
-					ID:          fmt.Sprintf("Peer-%s", newPort),
+					ID:          fmt.Sprintf(newPort),
 					Port:        newPort,
 					HasToken:    false,
 					WantsAccess: false,
@@ -86,6 +106,11 @@ func StartPeer() {
 				}
 				peer.AddToPeerList(newPeer)
 			} else if strings.HasPrefix(text, "/start") {
+				//give token to the "first" peer (on port 5001)
+				if *port == "5001" {
+					peer.HasToken = true
+				}
+				log.Printf("Peer %s joined the tokenring", peer.ID)
 				StartTokenRing(peer)
 			}
 		}
@@ -116,14 +141,17 @@ func StartTokenRing(peer *Peer) {
 		for {
 			if peer.WantsAccess {
 				if peer.HasToken {
+					log.Printf("I'm peer %s, and I have the Token", *&peer.ID)
 					log.Printf("I'm peer %s, and I'm in the critical section :D", *&peer.ID)
+					time.Sleep(2 * time.Second)
+					log.Printf("I'm peer %s, and i left the critical section :D", *&peer.ID)
 					peer.WantsAccess = false
 					peer.HasToken = false
 					GiveTokenForward(peer)
 				}
 			} else {
 				if peer.HasToken {
-					log.Printf("I'm peer %s, and I have the Token", *port)
+					log.Printf("I'm peer %s, and I have the Token", *&peer.ID)
 					peer.HasToken = false
 					GiveTokenForward(peer)
 				}
@@ -136,43 +164,35 @@ func GiveTokenForward(peer *Peer) {
 	nextPort := getNextPort(peer.Port)
 	if peer.portExists(nextPort) {
 		targetPeer := peer.findPeerByPort(nextPort)
-		log.Printf(targetPeer.Port)
 		if targetPeer != nil {
 			peer.SendTokenMessage(nextPort)
-			fmt.Printf("Token given to peer %s\n", targetPeer.Port)
+			fmt.Printf("Token given to peer %s\n", targetPeer.ID)
 		}
 	} else if !peer.portExists(nextPort) {
-		lowestPortPeer := peer.findLowestPortPeer()
-		if lowestPortPeer != nil {
-			peer.SendTokenMessage(lowestPortPeer.Port)
-			fmt.Printf("Token given to peer %s\n", lowestPortPeer.Port)
+		nextPort2 := getNextPort(nextPort)
+		if peer.portExists(nextPort2) {
+			log.Printf("peer on port next port must be dead, sending to +2 port")
+			targetPeer := peer.findPeerByPort(nextPort)
+			if targetPeer != nil {
+				peer.SendTokenMessage(nextPort)
+				fmt.Printf("Token given to peer %s\n", targetPeer.ID)
+			}
+		} else if !peer.portExists(nextPort2) {
+			lowestPortPeer := peer.findLowestPortPeer()
+			if lowestPortPeer != nil {
+				peer.SendTokenMessage(lowestPortPeer.Port)
+				fmt.Printf("Token given to peer %s\n", lowestPortPeer.ID)
+			}
 		}
 	} else {
 		GiveTokenForward(peer)
 	}
 }
 
-func (p *Peer) HandleIncomingMessages(conn net.Conn) {
-	defer conn.Close()
-	reader := bufio.NewReader(conn)
-
-	for {
-		// Read the incoming message
-		message, err := reader.ReadString('\n')
-		if err != nil {
-			log.Printf("Error reading message: %v", err)
-			return
-		}
-
-		// Handle the received message (you may want to add more logic here)
-		log.Printf("Received message: %s", message)
-	}
-}
-
 func (p *Peer) SendMessage(ctx context.Context, req *proto.MessageRequest) (*proto.MessageResponse, error) {
 	// Handle the received message
 	content := req.Content
-	log.Printf("Received message: %s", content)
+	log.Printf("Peer %s received the %s", p.ID, content)
 
 	p.HasToken = true
 	time.Sleep(1 * time.Second)
@@ -194,7 +214,7 @@ func (p *Peer) SendTokenMessage(port string) {
 	client := gRPC.NewPeerToPeerClient(conn)
 
 	// Prepare and send the message
-	tokenMessageStr := "TOKEN_MESSAGE"
+	tokenMessageStr := "TOKEN"
 	response, err := client.SendMessage(context.Background(), &gRPC.MessageRequest{Content: tokenMessageStr})
 	if err != nil {
 		log.Printf("Error sending token message to peer %s: %v", port, err)
@@ -223,7 +243,7 @@ func (p *Peer) portExists(port string) bool {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	for _, peerPort := range p.peerList {
+	for _, peerPort := range p.peerPorts {
 		if peerPort == port {
 			return true
 		}
@@ -235,7 +255,7 @@ func (p *Peer) findPeerByPort(port string) *Peer {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	for _, peerPort := range p.peerList {
+	for _, peerPort := range p.peerPorts {
 		if peer, ok := p.peers[peerPort]; ok {
 			return peer
 		}
@@ -247,12 +267,12 @@ func (p *Peer) findLowestPortPeer() *Peer {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	if len(p.peerList) == 0 {
+	if len(p.peerPorts) == 0 {
 		return nil
 	}
 
-	lowestPort := p.peerList[0]
-	for _, peerPort := range p.peerList {
+	lowestPort := p.peerPorts[0]
+	for _, peerPort := range p.peerPorts {
 		if peerPort < lowestPort {
 			lowestPort = peerPort
 		}
@@ -286,7 +306,7 @@ func rollDice() int {
 
 func (p *Peer) IWantAccess() {
 	if !p.WantsAccess {
-		fmt.Printf("Peer %s wants access to the critical section!\n", p.ID)
+		log.Printf("Peer %s wants access to the critical section!\n", p.ID)
 		p.WantsAccess = true
 	}
 }
@@ -295,10 +315,10 @@ func (p *Peer) AddToPeerList(newPeer *Peer) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	p.peerList = append(p.peerList, newPeer.Port)
+	p.peerPorts = append(p.peerPorts, newPeer.Port)
 	p.peers[newPeer.Port] = newPeer
 
-	fmt.Printf("Node %s added to peer list: %v\n", newPeer.ID, p.peerList)
+	log.Printf("Port %s added to peer %s's list: %v\n", newPeer.Port, p.ID, p.peerPorts)
 }
 
 func (p *Peer) Stop() {
