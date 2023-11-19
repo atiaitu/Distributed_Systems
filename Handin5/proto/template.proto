@@ -1,34 +1,37 @@
 syntax = "proto3";
 
-option go_package = "https://github.com/atiaitu/Distributed_Systems/tree/main/Handin3/proto";
+option go_package = "https://github.com/atiaitu/Distributed_Systems/tree/main/Handin5/proto";
 
 package proto;
 
-service Chittychat {
-    rpc SendChatMessage(ChatMessage) returns (Ack);
-    rpc HandleNewClient(JoinOrLeaveMessage) returns (GiveTimestampAndAck);
-    rpc ChatStream(stream ChatMessage) returns (stream ChatMessage);
-    rpc HandleClientLeave(JoinOrLeaveMessage) returns (GiveTimestampAndAck);
+service Auction {
+    rpc SendBid(BidMessage) returns (Ack);
+    rpc GetHighestBid(Name) returns (AckAndBid);
+    rpc HandleNewClient(JoinMessage) returns (Ack);
+    rpc BidStream(stream BidMessage) returns (stream BidMessage);
+}
+
+message Name {
+    string Name = 1;
+}
+
+message AckAndBid {
+    string message = 1;
+    int64 bid = 2;
 }
 
 message Ack {
     string message = 1;
-    int64 timestamp = 2;
 }
 
-message ChatMessage {
+message BidMessage {
     string clientName = 1;
-    string message = 2;
-    int64 timestamp = 3;
+    int64 bid = 2;
+    string identifier = 3;
 }
 
-message JoinOrLeaveMessage {
+message JoinMessage {
     string name = 1;
     string message = 2;
-    int64 timestamp = 3;
-}
-
-message GiveTimestampAndAck {
-    string message = 1;
-    int64 timestamp = 2;
+    string identifier = 3;
 }

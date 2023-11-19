@@ -19,232 +19,232 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	Chittychat_SendChatMessage_FullMethodName   = "/proto.Chittychat/SendChatMessage"
-	Chittychat_HandleNewClient_FullMethodName   = "/proto.Chittychat/HandleNewClient"
-	Chittychat_ChatStream_FullMethodName        = "/proto.Chittychat/ChatStream"
-	Chittychat_HandleClientLeave_FullMethodName = "/proto.Chittychat/HandleClientLeave"
+	Auction_SendBid_FullMethodName         = "/proto.Auction/SendBid"
+	Auction_GetHighestBid_FullMethodName   = "/proto.Auction/GetHighestBid"
+	Auction_HandleNewClient_FullMethodName = "/proto.Auction/HandleNewClient"
+	Auction_BidStream_FullMethodName       = "/proto.Auction/BidStream"
 )
 
-// ChittychatClient is the client API for Chittychat service.
+// AuctionClient is the client API for Auction service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type ChittychatClient interface {
-	SendChatMessage(ctx context.Context, in *ChatMessage, opts ...grpc.CallOption) (*Ack, error)
-	HandleNewClient(ctx context.Context, in *JoinOrLeaveMessage, opts ...grpc.CallOption) (*GiveTimestampAndAck, error)
-	ChatStream(ctx context.Context, opts ...grpc.CallOption) (Chittychat_ChatStreamClient, error)
-	HandleClientLeave(ctx context.Context, in *JoinOrLeaveMessage, opts ...grpc.CallOption) (*GiveTimestampAndAck, error)
+type AuctionClient interface {
+	SendBid(ctx context.Context, in *BidMessage, opts ...grpc.CallOption) (*Ack, error)
+	GetHighestBid(ctx context.Context, in *Name, opts ...grpc.CallOption) (*AckAndBid, error)
+	HandleNewClient(ctx context.Context, in *JoinMessage, opts ...grpc.CallOption) (*Ack, error)
+	BidStream(ctx context.Context, opts ...grpc.CallOption) (Auction_BidStreamClient, error)
 }
 
-type chittychatClient struct {
+type auctionClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewChittychatClient(cc grpc.ClientConnInterface) ChittychatClient {
-	return &chittychatClient{cc}
+func NewAuctionClient(cc grpc.ClientConnInterface) AuctionClient {
+	return &auctionClient{cc}
 }
 
-func (c *chittychatClient) SendChatMessage(ctx context.Context, in *ChatMessage, opts ...grpc.CallOption) (*Ack, error) {
+func (c *auctionClient) SendBid(ctx context.Context, in *BidMessage, opts ...grpc.CallOption) (*Ack, error) {
 	out := new(Ack)
-	err := c.cc.Invoke(ctx, Chittychat_SendChatMessage_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, Auction_SendBid_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *chittychatClient) HandleNewClient(ctx context.Context, in *JoinOrLeaveMessage, opts ...grpc.CallOption) (*GiveTimestampAndAck, error) {
-	out := new(GiveTimestampAndAck)
-	err := c.cc.Invoke(ctx, Chittychat_HandleNewClient_FullMethodName, in, out, opts...)
+func (c *auctionClient) GetHighestBid(ctx context.Context, in *Name, opts ...grpc.CallOption) (*AckAndBid, error) {
+	out := new(AckAndBid)
+	err := c.cc.Invoke(ctx, Auction_GetHighestBid_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *chittychatClient) ChatStream(ctx context.Context, opts ...grpc.CallOption) (Chittychat_ChatStreamClient, error) {
-	stream, err := c.cc.NewStream(ctx, &Chittychat_ServiceDesc.Streams[0], Chittychat_ChatStream_FullMethodName, opts...)
+func (c *auctionClient) HandleNewClient(ctx context.Context, in *JoinMessage, opts ...grpc.CallOption) (*Ack, error) {
+	out := new(Ack)
+	err := c.cc.Invoke(ctx, Auction_HandleNewClient_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &chittychatChatStreamClient{stream}
+	return out, nil
+}
+
+func (c *auctionClient) BidStream(ctx context.Context, opts ...grpc.CallOption) (Auction_BidStreamClient, error) {
+	stream, err := c.cc.NewStream(ctx, &Auction_ServiceDesc.Streams[0], Auction_BidStream_FullMethodName, opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &auctionBidStreamClient{stream}
 	return x, nil
 }
 
-type Chittychat_ChatStreamClient interface {
-	Send(*ChatMessage) error
-	Recv() (*ChatMessage, error)
+type Auction_BidStreamClient interface {
+	Send(*BidMessage) error
+	Recv() (*BidMessage, error)
 	grpc.ClientStream
 }
 
-type chittychatChatStreamClient struct {
+type auctionBidStreamClient struct {
 	grpc.ClientStream
 }
 
-func (x *chittychatChatStreamClient) Send(m *ChatMessage) error {
+func (x *auctionBidStreamClient) Send(m *BidMessage) error {
 	return x.ClientStream.SendMsg(m)
 }
 
-func (x *chittychatChatStreamClient) Recv() (*ChatMessage, error) {
-	m := new(ChatMessage)
+func (x *auctionBidStreamClient) Recv() (*BidMessage, error) {
+	m := new(BidMessage)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
 	return m, nil
 }
 
-func (c *chittychatClient) HandleClientLeave(ctx context.Context, in *JoinOrLeaveMessage, opts ...grpc.CallOption) (*GiveTimestampAndAck, error) {
-	out := new(GiveTimestampAndAck)
-	err := c.cc.Invoke(ctx, Chittychat_HandleClientLeave_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-// ChittychatServer is the server API for Chittychat service.
-// All implementations must embed UnimplementedChittychatServer
+// AuctionServer is the server API for Auction service.
+// All implementations must embed UnimplementedAuctionServer
 // for forward compatibility
-type ChittychatServer interface {
-	SendChatMessage(context.Context, *ChatMessage) (*Ack, error)
-	HandleNewClient(context.Context, *JoinOrLeaveMessage) (*GiveTimestampAndAck, error)
-	ChatStream(Chittychat_ChatStreamServer) error
-	HandleClientLeave(context.Context, *JoinOrLeaveMessage) (*GiveTimestampAndAck, error)
-	mustEmbedUnimplementedChittychatServer()
+type AuctionServer interface {
+	SendBid(context.Context, *BidMessage) (*Ack, error)
+	GetHighestBid(context.Context, *Name) (*AckAndBid, error)
+	HandleNewClient(context.Context, *JoinMessage) (*Ack, error)
+	BidStream(Auction_BidStreamServer) error
+	mustEmbedUnimplementedAuctionServer()
 }
 
-// UnimplementedChittychatServer must be embedded to have forward compatible implementations.
-type UnimplementedChittychatServer struct {
+// UnimplementedAuctionServer must be embedded to have forward compatible implementations.
+type UnimplementedAuctionServer struct {
 }
 
-func (UnimplementedChittychatServer) SendChatMessage(context.Context, *ChatMessage) (*Ack, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SendChatMessage not implemented")
+func (UnimplementedAuctionServer) SendBid(context.Context, *BidMessage) (*Ack, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SendBid not implemented")
 }
-func (UnimplementedChittychatServer) HandleNewClient(context.Context, *JoinOrLeaveMessage) (*GiveTimestampAndAck, error) {
+func (UnimplementedAuctionServer) GetHighestBid(context.Context, *Name) (*AckAndBid, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetHighestBid not implemented")
+}
+func (UnimplementedAuctionServer) HandleNewClient(context.Context, *JoinMessage) (*Ack, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method HandleNewClient not implemented")
 }
-func (UnimplementedChittychatServer) ChatStream(Chittychat_ChatStreamServer) error {
-	return status.Errorf(codes.Unimplemented, "method ChatStream not implemented")
+func (UnimplementedAuctionServer) BidStream(Auction_BidStreamServer) error {
+	return status.Errorf(codes.Unimplemented, "method BidStream not implemented")
 }
-func (UnimplementedChittychatServer) HandleClientLeave(context.Context, *JoinOrLeaveMessage) (*GiveTimestampAndAck, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method HandleClientLeave not implemented")
-}
-func (UnimplementedChittychatServer) mustEmbedUnimplementedChittychatServer() {}
+func (UnimplementedAuctionServer) mustEmbedUnimplementedAuctionServer() {}
 
-// UnsafeChittychatServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to ChittychatServer will
+// UnsafeAuctionServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to AuctionServer will
 // result in compilation errors.
-type UnsafeChittychatServer interface {
-	mustEmbedUnimplementedChittychatServer()
+type UnsafeAuctionServer interface {
+	mustEmbedUnimplementedAuctionServer()
 }
 
-func RegisterChittychatServer(s grpc.ServiceRegistrar, srv ChittychatServer) {
-	s.RegisterService(&Chittychat_ServiceDesc, srv)
+func RegisterAuctionServer(s grpc.ServiceRegistrar, srv AuctionServer) {
+	s.RegisterService(&Auction_ServiceDesc, srv)
 }
 
-func _Chittychat_SendChatMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ChatMessage)
+func _Auction_SendBid_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(BidMessage)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ChittychatServer).SendChatMessage(ctx, in)
+		return srv.(AuctionServer).SendBid(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Chittychat_SendChatMessage_FullMethodName,
+		FullMethod: Auction_SendBid_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ChittychatServer).SendChatMessage(ctx, req.(*ChatMessage))
+		return srv.(AuctionServer).SendBid(ctx, req.(*BidMessage))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Chittychat_HandleNewClient_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(JoinOrLeaveMessage)
+func _Auction_GetHighestBid_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Name)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ChittychatServer).HandleNewClient(ctx, in)
+		return srv.(AuctionServer).GetHighestBid(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Chittychat_HandleNewClient_FullMethodName,
+		FullMethod: Auction_GetHighestBid_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ChittychatServer).HandleNewClient(ctx, req.(*JoinOrLeaveMessage))
+		return srv.(AuctionServer).GetHighestBid(ctx, req.(*Name))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Chittychat_ChatStream_Handler(srv interface{}, stream grpc.ServerStream) error {
-	return srv.(ChittychatServer).ChatStream(&chittychatChatStreamServer{stream})
+func _Auction_HandleNewClient_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(JoinMessage)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuctionServer).HandleNewClient(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Auction_HandleNewClient_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuctionServer).HandleNewClient(ctx, req.(*JoinMessage))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-type Chittychat_ChatStreamServer interface {
-	Send(*ChatMessage) error
-	Recv() (*ChatMessage, error)
+func _Auction_BidStream_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(AuctionServer).BidStream(&auctionBidStreamServer{stream})
+}
+
+type Auction_BidStreamServer interface {
+	Send(*BidMessage) error
+	Recv() (*BidMessage, error)
 	grpc.ServerStream
 }
 
-type chittychatChatStreamServer struct {
+type auctionBidStreamServer struct {
 	grpc.ServerStream
 }
 
-func (x *chittychatChatStreamServer) Send(m *ChatMessage) error {
+func (x *auctionBidStreamServer) Send(m *BidMessage) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func (x *chittychatChatStreamServer) Recv() (*ChatMessage, error) {
-	m := new(ChatMessage)
+func (x *auctionBidStreamServer) Recv() (*BidMessage, error) {
+	m := new(BidMessage)
 	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
 	return m, nil
 }
 
-func _Chittychat_HandleClientLeave_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(JoinOrLeaveMessage)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ChittychatServer).HandleClientLeave(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Chittychat_HandleClientLeave_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ChittychatServer).HandleClientLeave(ctx, req.(*JoinOrLeaveMessage))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-// Chittychat_ServiceDesc is the grpc.ServiceDesc for Chittychat service.
+// Auction_ServiceDesc is the grpc.ServiceDesc for Auction service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var Chittychat_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "proto.Chittychat",
-	HandlerType: (*ChittychatServer)(nil),
+var Auction_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "proto.Auction",
+	HandlerType: (*AuctionServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "SendChatMessage",
-			Handler:    _Chittychat_SendChatMessage_Handler,
+			MethodName: "SendBid",
+			Handler:    _Auction_SendBid_Handler,
+		},
+		{
+			MethodName: "GetHighestBid",
+			Handler:    _Auction_GetHighestBid_Handler,
 		},
 		{
 			MethodName: "HandleNewClient",
-			Handler:    _Chittychat_HandleNewClient_Handler,
-		},
-		{
-			MethodName: "HandleClientLeave",
-			Handler:    _Chittychat_HandleClientLeave_Handler,
+			Handler:    _Auction_HandleNewClient_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
-			StreamName:    "ChatStream",
-			Handler:       _Chittychat_ChatStream_Handler,
+			StreamName:    "BidStream",
+			Handler:       _Auction_BidStream_Handler,
 			ServerStreams: true,
 			ClientStreams: true,
 		},
