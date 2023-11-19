@@ -1,10 +1,2 @@
-2023/11/19 15:54:57 Server default: Attempts to create listener on port 5400
-2023/11/19 15:54:57 Server default: Listening at 127.0.0.1:5400
-2023/11/19 15:55:03 Participant borge have requested to join the auction
-2023/11/19 15:55:03 Participant borge have requested to see the highest bid
-2023/11/19 15:55:03 Client borge bid: 40 with identifier 170040570381683255
-2023/11/19 15:55:19 Participant karl have requested to join the auction
-2023/11/19 15:55:19 Participant karl have requested to see the highest bid
-2023/11/19 15:55:22 Participant karl have requested to see the highest bid
-2023/11/19 15:55:26 Participant karl have requested to see the highest bid
-2023/11/19 15:55:26 Client karl bid: 41 with identifier 1700405726434147257
+2023/11/19 19:56:37 Server default: Attempts to create listener on port 5401
+2023/11/19 19:56:37 Server default: Listening at 127.0.0.1:5401

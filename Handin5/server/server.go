@@ -70,12 +70,14 @@ var clientConnections []*grpc.ClientConn
 var HighestBid int64
 
 func main() {
+	// Parse the flags and check if the "wipe" flag is present
+	wipeFlag := flag.Bool("wipe", false, "Wipe the log file")
+	flag.Parse()
 
-	f := setLog() //uncomment this line to log to a log.txt file instead of the console
+	// Set up the log with the wipeLog condition
+	f := setLog(*wipeFlag)
 	defer f.Close()
 
-	// This parses the flags and sets the correct/given corresponding values.
-	flag.Parse()
 	fmt.Println(".:server is starting:.")
 
 	// launch the server
@@ -154,12 +156,13 @@ func (s *Server) HandleNewClient(ctx context.Context, message *gRPC.JoinMessage)
 	s.addClient(message.Message)
 
 	log.Printf("Participant " + message.Name + " have requested to join the auction")
+	fmt.Printf("Participant " + message.Name + " have requested to join the auction")
 
 	return &gRPC.Ack{Message: "Joined succesfully\n"}, nil //ikke færdig, skal implementere lamport
 }
 
 // Get preferred outbound ip of this machine
-// Usefull if you have to know which ip you should dial, in a client running on an other computer
+// Useful if you have to know which ip you should dial, in a client running on another computer
 func GetOutboundIP() net.IP {
 	conn, err := net.Dial("udp", "8.8.8.8:80")
 	if err != nil {
@@ -173,13 +176,15 @@ func GetOutboundIP() net.IP {
 }
 
 // sets the logger to use a log.txt file instead of the console
-func setLog() *os.File {
-	// Clears the log.txt file when a new server is started
-	if err := os.Truncate("log.txt", 0); err != nil {
-		log.Printf("Failed to truncate: %v", err)
+func setLog(wipeLog bool) *os.File {
+	if wipeLog {
+		// Clears the log.txt file when wipeLog is true
+		if err := os.Truncate("log.txt", 0); err != nil {
+			log.Printf("Failed to truncate: %v", err)
+		}
 	}
 
-	// This connects to the log file/changes the output of the log informaiton to the log.txt file.
+	// This connects to the log file/changes the output of the log information to the log.txt file.
 	f, err := os.OpenFile("log.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
 		log.Fatalf("error opening file: %v", err)
