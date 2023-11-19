@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"sync"
+	"time"
 
 	// this has to be the same as the go.mod module,
 	// followed by the path to the folder the proto file is in.
@@ -15,8 +16,6 @@ import (
 
 	"google.golang.org/grpc"
 )
-
-var ServerTimestamp int64 = 0
 
 type Server struct {
 	gRPC.UnimplementedAuctionServer
@@ -28,6 +27,9 @@ type Server struct {
 	mutex          sync.Mutex // used to lock the server to avoid race conditions.
 
 	clients map[gRPC.Auction_BidStreamServer]bool
+
+	timerStarted bool
+	auctionTimer *time.Timer
 }
 
 // Add connected client streams to the map when they join.
@@ -63,11 +65,17 @@ func (s *Server) ChatStream(stream gRPC.Auction_BidStreamServer) error {
 
 // flags are used to get arguments from the terminal. Flags take a value, a default value and a description of the flag.
 // to use a flag then just add it as an argument when running the program.
-var serverName = flag.String("name", "default", "Senders name") // set with "-name <name>" in terminal
-var port = flag.String("port", "5400", "Server port")           // set with "-port <port>" in terminal
-var clientsList = make(map[string]struct{})
-var clientConnections []*grpc.ClientConn
-var HighestBid int64
+var (
+	serverName                 = flag.String("name", "default", "Senders name") // set with "-name <name>" in terminal
+	port                       = flag.String("port", "5400", "Server port")     // set with "-port <port>" in terminal
+	ServerTimestamp      int64 = 0
+	clientsList                = make(map[string]struct{})
+	clientConnections    []*grpc.ClientConn
+	HighestBid           int64
+	CurrentWinner        string
+	auctionTimerMutex    sync.Mutex
+	AuctionTimerFinished bool
+)
 
 func main() {
 	// Parse the flags and check if the "wipe" flag is present
@@ -116,25 +124,54 @@ func launchServer() {
 	// code here is unreachable because grpcServer.Serve occupies the current thread.
 }
 
-func (s *Server) SendBid(ctx context.Context, message *gRPC.BidMessage) (*gRPC.Ack, error) {
+func (s *Server) SendBid(ctx context.Context, message *gRPC.BidMessage) (*gRPC.AckAndBid, error) {
 
+	if int64(message.Bid) <= HighestBid {
+		return &gRPC.AckAndBid{Message: "It seems like the current highest bid is above yours. Use /r to check the current highest bid\n"}, nil
+	}
+
+	CurrentWinner = message.ClientName
 	HighestBid = message.Bid
 
 	// Logs in the terminal when a client sends a message
-	log.Printf("Client %s bid: %d with identifier %s", message.ClientName, message.Bid, message.Identifier) //minus one, because the broadcastchatmessage updates the serverTimestamp after, so we need to correct for that
+	log.Printf("%s: Client %s bid: %d with identifier %s", s.name, message.ClientName, message.Bid, message.Identifier) //minus one, because the broadcastchatmessage updates the serverTimestamp after, so we need to correct for that
 
 	// Return an acknowledgment
-	return &gRPC.Ack{Message: "bid successfully placed\n"}, nil
+	return &gRPC.AckAndBid{Message: "bid successfully placed\n"}, nil
 }
 
 // BroadcastChatMessage sends an acknowledgment message to all connected clients.
-func (s *Server) GetHighestBid(ctx context.Context, name *gRPC.Name) (*gRPC.AckAndBid, error) {
+func (s *Server) GetHighestBid(ctx context.Context, NameAndIdentifier *gRPC.NameAndIdentifier) (*gRPC.AckAndBid, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	message := fmt.Sprintf("The current highest bid is: %d\n", HighestBid)
 
 	return &gRPC.AckAndBid{Message: message, Bid: HighestBid}, nil
+}
+
+func (s *Server) CheckAuctionState(ctx context.Context, dentifier *gRPC.Identifier) (*gRPC.Ack, error) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	if AuctionTimerFinished {
+		message := fmt.Sprintf("Done")
+
+		return &gRPC.Ack{Message: message}, nil
+	}
+
+	message := fmt.Sprintf("Alive")
+
+	return &gRPC.Ack{Message: message}, nil
+}
+
+func (s *Server) GetWinner(ctx context.Context, dentifier *gRPC.Identifier) (*gRPC.AckAndBid, error) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	message := fmt.Sprintf("The winner is %s, with the bid: %d\n", CurrentWinner, HighestBid)
+
+	return &gRPC.AckAndBid{Message: message}, nil
 }
 
 // Function to add a new client to the list
@@ -144,21 +181,41 @@ func (s *Server) addClient(clientName string) {
 	s.mutex.Unlock()
 }
 
-// Function to remove a client from the list
-func (s *Server) removeClient(clientName string) {
-	s.mutex.Lock()
-	delete(clientsList, clientName)
-	s.mutex.Unlock()
-}
-
 // Function to handle a new client joining
 func (s *Server) HandleNewClient(ctx context.Context, message *gRPC.JoinMessage) (*gRPC.Ack, error) {
 	s.addClient(message.Message)
 
-	log.Printf("Participant " + message.Name + " have requested to join the auction")
-	fmt.Printf("Participant " + message.Name + " have requested to join the auction")
+	log.Printf("Participant " + message.Name + " has requested to join the auction")
 
-	return &gRPC.Ack{Message: "Joined succesfully\n"}, nil //ikke færdig, skal implementere lamport
+	// Start the timer when the first client joins
+	if !s.timerStarted {
+		s.startTimer()
+		s.timerStarted = true
+	}
+
+	return &gRPC.Ack{Message: "Joined successfully\n"}, nil
+}
+
+// Function to start the timer
+func (s *Server) startTimer() {
+	// If there's an existing timer, stop it
+	if s.auctionTimer != nil {
+		s.auctionTimer.Stop()
+	}
+
+	// Start a new timer for 50 seconds
+	s.auctionTimer = time.NewTimer(10 * time.Second)
+
+	// Goroutine to monitor the timer
+	go func() {
+		<-s.auctionTimer.C
+		log.Println("Auction time is up!")
+
+		// Use a lock to safely update shared variable
+		auctionTimerMutex.Lock()
+		AuctionTimerFinished = true
+		auctionTimerMutex.Unlock()
+	}()
 }
 
 // Get preferred outbound ip of this machine

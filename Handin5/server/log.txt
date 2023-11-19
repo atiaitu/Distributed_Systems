@@ -1,2 +1,27 @@
-2023/11/19 19:56:37 Server default: Attempts to create listener on port 5401
-2023/11/19 19:56:37 Server default: Listening at 127.0.0.1:5401
+2023/11/19 23:30:40 Server Server0: Attempts to create listener on port 5400
+2023/11/19 23:30:40 Server Server0: Listening at 127.0.0.1:5400
+2023/11/19 23:30:41 Server Server1: Attempts to create listener on port 5401
+2023/11/19 23:30:41 Server Server1: Listening at 127.0.0.1:5401
+2023/11/19 23:30:43 Server Server2: Attempts to create listener on port 5402
+2023/11/19 23:30:43 Server Server2: Listening at 127.0.0.1:5402
+2023/11/19 23:30:49 Participant borge has requested to join the auction
+2023/11/19 23:30:49 Server0: Client borge bid: 10 with identifier 1700433049420663484
+2023/11/19 23:30:49 Participant borge has requested to join the auction
+2023/11/19 23:30:49 Server1: Client borge bid: 10 with identifier 1700433049420663484
+2023/11/19 23:30:49 Participant borge has requested to join the auction
+2023/11/19 23:30:49 Server2: Client borge bid: 10 with identifier 1700433049420663484
+2023/11/19 23:30:52 Participant karl has requested to join the auction
+2023/11/19 23:30:52 Server0: Client karl bid: 202002 with identifier 1700433052241203605
+2023/11/19 23:30:52 Participant karl has requested to join the auction
+2023/11/19 23:30:52 Server1: Client karl bid: 202002 with identifier 1700433052241203605
+2023/11/19 23:30:52 Participant karl has requested to join the auction
+2023/11/19 23:30:52 Server2: Client karl bid: 202002 with identifier 1700433052241203605
+2023/11/19 23:30:55 Server0: Client borge bid: 2020202020 with identifier 1700433055509224134
+2023/11/19 23:30:55 Server1: Client borge bid: 2020202020 with identifier 1700433055509224134
+2023/11/19 23:30:55 Server2: Client borge bid: 2020202020 with identifier 1700433055509224134
+2023/11/19 23:30:58 Server0: Client karl bid: 20202020202 with identifier 1700433058702605953
+2023/11/19 23:30:58 Server1: Client karl bid: 20202020202 with identifier 1700433058702605953
+2023/11/19 23:30:58 Server2: Client karl bid: 20202020202 with identifier 1700433058702605953
+2023/11/19 23:30:59 Auction time is up!
+2023/11/19 23:30:59 Auction time is up!
+2023/11/19 23:30:59 Auction time is up!

@@ -5,14 +5,21 @@ option go_package = "https://github.com/atiaitu/Distributed_Systems/tree/main/Ha
 package proto;
 
 service Auction {
-    rpc SendBid(BidMessage) returns (Ack);
-    rpc GetHighestBid(Name) returns (AckAndBid);
+    rpc SendBid(BidMessage) returns (AckAndBid);
+    rpc GetHighestBid(NameAndIdentifier) returns (AckAndBid);
     rpc HandleNewClient(JoinMessage) returns (Ack);
+    rpc GetWinner(Identifier) returns (AckAndBid);
+    rpc CheckAuctionState(Identifier) returns (Ack);
     rpc BidStream(stream BidMessage) returns (stream BidMessage);
 }
 
-message Name {
-    string Name = 1;
+message Identifier {
+    string identifier = 1;
+}
+
+message NameAndIdentifier {
+    string name = 1;
+    string identifier = 2;
 }
 
 message AckAndBid {

@@ -10,9 +10,11 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	gRPC "github.com/atiaitu/Distributed_Systems/tree/main/Handin5/proto"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -29,10 +31,12 @@ var (
 	ServerConn2             *grpc.ClientConn
 	ServerConn3             *grpc.ClientConn
 	stopRoutine             = make(chan bool)
-	clientLamportTimestamp  int64
 	highestBid              int
 	lastGeneratedIdentifier string
-	joined                  = false
+	joined1                 = false
+	joined2                 = false
+	joined3                 = false
+	auctionTimerMutex       sync.Mutex
 )
 
 func main() {
@@ -93,11 +97,17 @@ func parseInput() {
 	}
 }
 
-func sendRequest(server gRPC.AuctionClient, conn *grpc.ClientConn, input, identifier string) (response *gRPC.Ack, err error) {
+func sendRequest(server gRPC.AuctionClient, conn *grpc.ClientConn, input, identifier string) (response *gRPC.AckAndBid, err error) {
 	if conReady(conn) {
-		if !joined {
+		if !joined1 {
 			sendJoin(server)
-			joined = true
+			joined1 = true
+		} else if !joined2 {
+			sendJoin(server)
+			joined2 = true
+		} else if !joined3 {
+			sendJoin(server)
+			joined3 = true
 		}
 
 		if strings.HasPrefix(input, "/b") {
@@ -107,26 +117,21 @@ func sendRequest(server gRPC.AuctionClient, conn *grpc.ClientConn, input, identi
 			if err != nil {
 				log.Fatal(err)
 			}
-
-			var HB, errr = GetHighestBid(server)
-			if errr != nil {
+			// Use the same identifier for all multicasted requests
+			response, err = sendBid(server, *clientsName, bid, identifier)
+			highestBid = bid
+		} else if strings.HasPrefix(input, "/r") {
+			var check, err = CheckIfAuctionIsOver(server, identifier)
+			if err != nil {
 				log.Fatal(err)
 			}
-			if bid < highestBid {
-				fmt.Printf("Your bid must be higher than your previous bid\n")
-			} else if int64(bid) < HB {
-				fmt.Printf("It seems like another bidder has bidden higher. Use /r to check the current highest bid\n")
+			if check.Message == "Done" {
+				response, err = GetWinner(server, identifier)
 			} else {
-				// Use the same identifier for all multicasted requests
-				response, err = sendBid(server, *clientsName, bid, identifier)
-				highestBid = bid
-			}
-		} else if strings.HasPrefix(input, "/r") {
-			var response, err = GetHighestBid(server)
-			if err != nil {
-				log.Printf("%s: Error getting the highest bid: %v", *clientsName, err)
-			} else {
-				fmt.Printf("The current highest bid is: %d\n", response)
+				response, err = GetHighestBid(server, identifier)
+				if err != nil {
+					log.Printf("%s: Error getting the highest bid: %v", *clientsName, err)
+				}
 			}
 		}
 	}
@@ -134,20 +139,38 @@ func sendRequest(server gRPC.AuctionClient, conn *grpc.ClientConn, input, identi
 	return response, err
 }
 
-func GetHighestBid(server gRPC.AuctionClient) (bid int64, err error) {
-	Name := &gRPC.Name{
-		Name: *clientsName,
-	}
-	response, err := server.GetHighestBid(context.Background(), Name)
+func CheckIfAuctionIsOver(server gRPC.AuctionClient, identifier string) (response *gRPC.Ack, err error) {
+
+	// Use the provided identifier when making the request
+	response, err = server.CheckAuctionState(context.Background(), &gRPC.Identifier{Identifier: identifier})
 	if err != nil {
 		log.Printf("%s: Error getting the highest bid: %v", *clientsName, err)
-		return 0, err
+		return
 	}
 
-	return response.Bid, nil
+	return response, nil
 }
 
-func sendBid(server gRPC.AuctionClient, clientName string, bid int, identifier string) (response *gRPC.Ack, err error) {
+func GetHighestBid(server gRPC.AuctionClient, identifier string) (bid *gRPC.AckAndBid, err error) {
+
+	// Use the provided identifier when making the request
+	response, err := server.GetHighestBid(context.Background(), &gRPC.NameAndIdentifier{Name: *clientsName, Identifier: identifier})
+	if err != nil {
+		log.Printf("%s: Error getting the highest bid: %v", *clientsName, err)
+		return
+	}
+
+	return response, nil
+}
+
+func GetWinner(server gRPC.AuctionClient, identifier string) (response *gRPC.AckAndBid, err error) {
+	identifierMessage := &gRPC.Identifier{
+		Identifier: identifier,
+	}
+	return server.GetWinner(context.Background(), identifierMessage)
+}
+
+func sendBid(server gRPC.AuctionClient, clientName string, bid int, identifier string) (response *gRPC.AckAndBid, err error) {
 	BidMessage := &gRPC.BidMessage{
 		ClientName: clientName,
 		Bid:        int64(bid),
@@ -176,7 +199,6 @@ func receiveMessages(chatStream gRPC.Auction_BidStreamClient) {
 }
 
 func sendJoin(server gRPC.AuctionClient) {
-	clientLamportTimestamp++
 
 	JoinMessage := &gRPC.JoinMessage{
 		Name:       *clientsName,
@@ -191,7 +213,7 @@ func sendJoin(server gRPC.AuctionClient) {
 		return
 	}
 
-	fmt.Printf(ack.Message)
+	ack = ack
 }
 
 func generateUniqueIdentifier() string {
@@ -202,9 +224,9 @@ func generateUniqueIdentifier() string {
 	return lastGeneratedIdentifier
 }
 
-func getMajorityResponse(responses ...*gRPC.Ack) *gRPC.Ack {
+func getMajorityResponse(responses ...*gRPC.AckAndBid) *gRPC.AckAndBid {
 	// Count the occurrences of each response
-	counts := make(map[*gRPC.Ack]int)
+	counts := make(map[*gRPC.AckAndBid]int)
 	for _, response := range responses {
 		if response != nil {
 			counts[response]++
@@ -212,7 +234,7 @@ func getMajorityResponse(responses ...*gRPC.Ack) *gRPC.Ack {
 	}
 
 	// Find the response with the maximum count
-	var majorityResponse *gRPC.Ack
+	var majorityResponse *gRPC.AckAndBid
 	maxCount := 0
 	for response, count := range counts {
 		if count > maxCount {
@@ -224,7 +246,7 @@ func getMajorityResponse(responses ...*gRPC.Ack) *gRPC.Ack {
 	return majorityResponse
 }
 
-func handleMajorityResponse(response *gRPC.Ack) {
+func handleMajorityResponse(response *gRPC.AckAndBid) {
 	// Handle the majority response here
 	if response != nil {
 		fmt.Printf("Majority response: %s\n", response.Message)
@@ -254,7 +276,6 @@ func ConnectToServer(serverPort *string) (gRPC.AuctionClient, *grpc.ClientConn) 
 	}
 
 	// Makes a client from the server connection and saves the connection
-	// and prints whether or not the connection was READY
 	client := gRPC.NewAuctionClient(conn)
 
 	return client, conn

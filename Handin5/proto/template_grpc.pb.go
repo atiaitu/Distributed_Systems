@@ -19,19 +19,23 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	Auction_SendBid_FullMethodName         = "/proto.Auction/SendBid"
-	Auction_GetHighestBid_FullMethodName   = "/proto.Auction/GetHighestBid"
-	Auction_HandleNewClient_FullMethodName = "/proto.Auction/HandleNewClient"
-	Auction_BidStream_FullMethodName       = "/proto.Auction/BidStream"
+	Auction_SendBid_FullMethodName           = "/proto.Auction/SendBid"
+	Auction_GetHighestBid_FullMethodName     = "/proto.Auction/GetHighestBid"
+	Auction_HandleNewClient_FullMethodName   = "/proto.Auction/HandleNewClient"
+	Auction_GetWinner_FullMethodName         = "/proto.Auction/GetWinner"
+	Auction_CheckAuctionState_FullMethodName = "/proto.Auction/CheckAuctionState"
+	Auction_BidStream_FullMethodName         = "/proto.Auction/BidStream"
 )
 
 // AuctionClient is the client API for Auction service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type AuctionClient interface {
-	SendBid(ctx context.Context, in *BidMessage, opts ...grpc.CallOption) (*Ack, error)
-	GetHighestBid(ctx context.Context, in *Name, opts ...grpc.CallOption) (*AckAndBid, error)
+	SendBid(ctx context.Context, in *BidMessage, opts ...grpc.CallOption) (*AckAndBid, error)
+	GetHighestBid(ctx context.Context, in *NameAndIdentifier, opts ...grpc.CallOption) (*AckAndBid, error)
 	HandleNewClient(ctx context.Context, in *JoinMessage, opts ...grpc.CallOption) (*Ack, error)
+	GetWinner(ctx context.Context, in *Identifier, opts ...grpc.CallOption) (*AckAndBid, error)
+	CheckAuctionState(ctx context.Context, in *Identifier, opts ...grpc.CallOption) (*Ack, error)
 	BidStream(ctx context.Context, opts ...grpc.CallOption) (Auction_BidStreamClient, error)
 }
 
@@ -43,8 +47,8 @@ func NewAuctionClient(cc grpc.ClientConnInterface) AuctionClient {
 	return &auctionClient{cc}
 }
 
-func (c *auctionClient) SendBid(ctx context.Context, in *BidMessage, opts ...grpc.CallOption) (*Ack, error) {
-	out := new(Ack)
+func (c *auctionClient) SendBid(ctx context.Context, in *BidMessage, opts ...grpc.CallOption) (*AckAndBid, error) {
+	out := new(AckAndBid)
 	err := c.cc.Invoke(ctx, Auction_SendBid_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -52,7 +56,7 @@ func (c *auctionClient) SendBid(ctx context.Context, in *BidMessage, opts ...grp
 	return out, nil
 }
 
-func (c *auctionClient) GetHighestBid(ctx context.Context, in *Name, opts ...grpc.CallOption) (*AckAndBid, error) {
+func (c *auctionClient) GetHighestBid(ctx context.Context, in *NameAndIdentifier, opts ...grpc.CallOption) (*AckAndBid, error) {
 	out := new(AckAndBid)
 	err := c.cc.Invoke(ctx, Auction_GetHighestBid_FullMethodName, in, out, opts...)
 	if err != nil {
@@ -64,6 +68,24 @@ func (c *auctionClient) GetHighestBid(ctx context.Context, in *Name, opts ...grp
 func (c *auctionClient) HandleNewClient(ctx context.Context, in *JoinMessage, opts ...grpc.CallOption) (*Ack, error) {
 	out := new(Ack)
 	err := c.cc.Invoke(ctx, Auction_HandleNewClient_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *auctionClient) GetWinner(ctx context.Context, in *Identifier, opts ...grpc.CallOption) (*AckAndBid, error) {
+	out := new(AckAndBid)
+	err := c.cc.Invoke(ctx, Auction_GetWinner_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *auctionClient) CheckAuctionState(ctx context.Context, in *Identifier, opts ...grpc.CallOption) (*Ack, error) {
+	out := new(Ack)
+	err := c.cc.Invoke(ctx, Auction_CheckAuctionState_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -105,9 +127,11 @@ func (x *auctionBidStreamClient) Recv() (*BidMessage, error) {
 // All implementations must embed UnimplementedAuctionServer
 // for forward compatibility
 type AuctionServer interface {
-	SendBid(context.Context, *BidMessage) (*Ack, error)
-	GetHighestBid(context.Context, *Name) (*AckAndBid, error)
+	SendBid(context.Context, *BidMessage) (*AckAndBid, error)
+	GetHighestBid(context.Context, *NameAndIdentifier) (*AckAndBid, error)
 	HandleNewClient(context.Context, *JoinMessage) (*Ack, error)
+	GetWinner(context.Context, *Identifier) (*AckAndBid, error)
+	CheckAuctionState(context.Context, *Identifier) (*Ack, error)
 	BidStream(Auction_BidStreamServer) error
 	mustEmbedUnimplementedAuctionServer()
 }
@@ -116,14 +140,20 @@ type AuctionServer interface {
 type UnimplementedAuctionServer struct {
 }
 
-func (UnimplementedAuctionServer) SendBid(context.Context, *BidMessage) (*Ack, error) {
+func (UnimplementedAuctionServer) SendBid(context.Context, *BidMessage) (*AckAndBid, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SendBid not implemented")
 }
-func (UnimplementedAuctionServer) GetHighestBid(context.Context, *Name) (*AckAndBid, error) {
+func (UnimplementedAuctionServer) GetHighestBid(context.Context, *NameAndIdentifier) (*AckAndBid, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetHighestBid not implemented")
 }
 func (UnimplementedAuctionServer) HandleNewClient(context.Context, *JoinMessage) (*Ack, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method HandleNewClient not implemented")
+}
+func (UnimplementedAuctionServer) GetWinner(context.Context, *Identifier) (*AckAndBid, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetWinner not implemented")
+}
+func (UnimplementedAuctionServer) CheckAuctionState(context.Context, *Identifier) (*Ack, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CheckAuctionState not implemented")
 }
 func (UnimplementedAuctionServer) BidStream(Auction_BidStreamServer) error {
 	return status.Errorf(codes.Unimplemented, "method BidStream not implemented")
@@ -160,7 +190,7 @@ func _Auction_SendBid_Handler(srv interface{}, ctx context.Context, dec func(int
 }
 
 func _Auction_GetHighestBid_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Name)
+	in := new(NameAndIdentifier)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -172,7 +202,7 @@ func _Auction_GetHighestBid_Handler(srv interface{}, ctx context.Context, dec fu
 		FullMethod: Auction_GetHighestBid_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AuctionServer).GetHighestBid(ctx, req.(*Name))
+		return srv.(AuctionServer).GetHighestBid(ctx, req.(*NameAndIdentifier))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -191,6 +221,42 @@ func _Auction_HandleNewClient_Handler(srv interface{}, ctx context.Context, dec 
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(AuctionServer).HandleNewClient(ctx, req.(*JoinMessage))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Auction_GetWinner_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Identifier)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuctionServer).GetWinner(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Auction_GetWinner_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuctionServer).GetWinner(ctx, req.(*Identifier))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Auction_CheckAuctionState_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Identifier)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuctionServer).CheckAuctionState(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Auction_CheckAuctionState_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuctionServer).CheckAuctionState(ctx, req.(*Identifier))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -239,6 +305,14 @@ var Auction_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "HandleNewClient",
 			Handler:    _Auction_HandleNewClient_Handler,
+		},
+		{
+			MethodName: "GetWinner",
+			Handler:    _Auction_GetWinner_Handler,
+		},
+		{
+			MethodName: "CheckAuctionState",
+			Handler:    _Auction_CheckAuctionState_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
