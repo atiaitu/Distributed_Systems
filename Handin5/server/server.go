@@ -174,6 +174,7 @@ func (s *Server) GetWinner(ctx context.Context, dentifier *gRPC.Identifier) (*gR
 	defer s.mutex.Unlock()
 
 	message := fmt.Sprintf("The winner is %s, with the bid: %d\n", CurrentWinner, HighestBid)
+	log.Printf("The winner is %s, with the bid: %d\n", CurrentWinner, HighestBid)
 
 	return &gRPC.AckAndBid{Message: message}, nil
 }
