@@ -126,6 +126,10 @@ func launchServer() {
 
 func (s *Server) SendBid(ctx context.Context, message *gRPC.BidMessage) (*gRPC.AckAndBid, error) {
 
+	if AuctionTimerFinished {
+		return &gRPC.AckAndBid{Message: "The auction is over, use /r to see the winner\n"}, nil
+
+	}
 	if int64(message.Bid) <= HighestBid {
 		return &gRPC.AckAndBid{Message: "It seems like the current highest bid is above yours. Use /r to check the current highest bid\n"}, nil
 	}
@@ -196,22 +200,22 @@ func (s *Server) HandleNewClient(ctx context.Context, message *gRPC.JoinMessage)
 	return &gRPC.Ack{Message: "Joined successfully\n"}, nil
 }
 
-// Function to start the timer
+// function to start the timer
 func (s *Server) startTimer() {
 	// If there's an existing timer, stop it
 	if s.auctionTimer != nil {
 		s.auctionTimer.Stop()
 	}
 
-	// Start a new timer for 50 seconds
-	s.auctionTimer = time.NewTimer(10 * time.Second)
+	//start a new timer for 30 seconds
+	s.auctionTimer = time.NewTimer(30 * time.Second)
 
-	// Goroutine to monitor the timer
+	//goroutine to monitor the timer
 	go func() {
 		<-s.auctionTimer.C
 		log.Println("Auction time is up!")
 
-		// Use a lock to safely update shared variable
+		//use an lock to safely update shared variable
 		auctionTimerMutex.Lock()
 		AuctionTimerFinished = true
 		auctionTimerMutex.Unlock()
