@@ -18,5 +18,6 @@ when the input above has been executed, clients can bit and review the stauts of
 
 - The server keeps a log of all interactions called log.txt, and it is under the server folder
 - Try to crash one server, and becuase of the construction of the servers, the auction will still function as expected.
+- Right now, the auction is set to 30 seconds, and starts when the first bid is placed, if you want to change timer, see line 212 in the server.go code.
 
 
