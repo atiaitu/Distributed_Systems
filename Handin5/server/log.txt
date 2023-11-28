@@ -1,27 +1,45 @@
-2023/11/27 20:38:10 Server Server0: Attempts to create listener on port 5400
-2023/11/27 20:38:10 Server Server0: Listening at 127.0.0.1:5400
-2023/11/27 20:38:11 Server Server1: Attempts to create listener on port 5401
-2023/11/27 20:38:11 Server Server1: Listening at 127.0.0.1:5401
-2023/11/27 20:38:14 Server Server2: Attempts to create listener on port 5402
-2023/11/27 20:38:14 Server Server2: Listening at 127.0.0.1:5402
-2023/11/27 20:39:02 Participant karl has requested to join the auction
-2023/11/27 20:39:02 Server0: Client karl bid: 10 with identifier 1701113942775266701
-2023/11/27 20:39:02 Participant karl has requested to join the auction
-2023/11/27 20:39:02 Server1: Client karl bid: 10 with identifier 1701113942775266701
-2023/11/27 20:39:02 Participant karl has requested to join the auction
-2023/11/27 20:39:02 Server2: Client karl bid: 10 with identifier 1701113942775266701
-2023/11/27 20:39:05 Participant borge has requested to join the auction
-2023/11/27 20:39:05 Participant borge has requested to join the auction
-2023/11/27 20:39:05 Participant borge has requested to join the auction
-2023/11/27 20:39:18 Server0: Client karl bid: 20 with identifier 1701113958804172137
-2023/11/27 20:39:18 Server1: Client karl bid: 20 with identifier 1701113958804172137
-2023/11/27 20:39:18 Server2: Client karl bid: 20 with identifier 1701113958804172137
-2023/11/27 20:39:22 Server0: Client karl bid: 30 with identifier 1701113962400703605
-2023/11/27 20:39:22 Server1: Client karl bid: 30 with identifier 1701113962400703605
-2023/11/27 20:39:22 Server2: Client karl bid: 30 with identifier 1701113962400703605
-2023/11/27 20:39:28 Server0: Client borge bid: 40 with identifier 1701113968672653500
-2023/11/27 20:39:28 Server1: Client borge bid: 40 with identifier 1701113968672653500
-2023/11/27 20:39:28 Server2: Client borge bid: 40 with identifier 1701113968672653500
-2023/11/27 20:39:32 Auction time is up!
-2023/11/27 20:39:32 Auction time is up!
-2023/11/27 20:39:32 Auction time is up!
+2023/11/28 19:56:33 Server Server0: Attempts to create listener on port 5400
+2023/11/28 19:56:33 Server Server0: Listening at 127.0.0.1:5400
+2023/11/28 19:56:33 Server Server1: Attempts to create listener on port 5401
+2023/11/28 19:56:33 Server Server1: Listening at 127.0.0.1:5401
+2023/11/28 19:56:35 Server Server2: Attempts to create listener on port 5402
+2023/11/28 19:56:35 Server Server2: Listening at 127.0.0.1:5402
+2023/11/28 19:56:44 Participant borge has requested to join the auction
+2023/11/28 19:56:44 Server0: Client borge bid: 10 with identifier 1701197804514466681
+2023/11/28 19:56:44 Participant borge has requested to join the auction
+2023/11/28 19:56:44 Server1: Client borge bid: 10 with identifier 1701197804514466681
+2023/11/28 19:56:44 Participant borge has requested to join the auction
+2023/11/28 19:56:44 Server2: Client borge bid: 10 with identifier 1701197804514466681
+2023/11/28 19:56:48 Participant karl has requested to join the auction
+2023/11/28 19:56:48 Server0: Client karl bid: 20 with identifier 1701197808642734772
+2023/11/28 19:56:48 Participant karl has requested to join the auction
+2023/11/28 19:56:48 Server1: Client karl bid: 20 with identifier 1701197808642734772
+2023/11/28 19:56:53 Participant karl has requested to join the auction
+2023/11/28 19:56:53 Server0: Client karl bid: 30 with identifier 1701197813441409430
+2023/11/28 19:56:53 Server1: Client karl bid: 30 with identifier 1701197813441409430
+2023/11/28 19:56:56 Server0: Client borge bid: 40 with identifier 1701197816597560420
+2023/11/28 19:56:56 Server1: Client borge bid: 40 with identifier 1701197816597560420
+2023/11/28 19:57:00 Server Server2: Attempts to create listener on port 5402
+2023/11/28 19:57:00 Server Server2: Listening at 127.0.0.1:5402
+2023/11/28 19:57:04 Server0: Client karl bid: 50 with identifier 1701197824893925959
+2023/11/28 19:57:04 Server1: Client karl bid: 50 with identifier 1701197824893925959
+2023/11/28 19:57:04 Server2: Client karl bid: 50 with identifier 1701197824893925959
+2023/11/28 19:57:07 Server0: Client karl bid: 100 with identifier 1701197827826920314
+2023/11/28 19:57:07 Server1: Client karl bid: 100 with identifier 1701197827826920314
+2023/11/28 19:57:07 Server2: Client karl bid: 100 with identifier 1701197827826920314
+2023/11/28 19:57:12 Server0: Client borge bid: 1000 with identifier 1701197832243325946
+2023/11/28 19:57:12 Server1: Client borge bid: 1000 with identifier 1701197832243325946
+2023/11/28 19:57:12 Server2: Client borge bid: 1000 with identifier 1701197832243325946
+2023/11/28 19:57:14 Auction time is up!
+2023/11/28 19:57:14 Auction time is up!
+2023/11/28 19:57:18 Server2: Client borge bid: 10000 with identifier 1701197837998969976
+2023/11/28 19:57:20 The winner is borge, with the bid: 1000
+2023/11/28 19:57:20 The winner is borge, with the bid: 1000
+2023/11/28 19:57:24 The winner is borge, with the bid: 1000
+2023/11/28 19:57:24 The winner is borge, with the bid: 1000
+2023/11/28 19:58:47 The winner is borge, with the bid: 1000
+2023/11/28 19:58:47 The winner is borge, with the bid: 1000
+2023/11/28 19:59:00 The winner is borge, with the bid: 1000
+2023/11/28 19:59:00 The winner is borge, with the bid: 1000
+2023/11/28 19:59:20 The winner is borge, with the bid: 1000
+2023/11/28 19:59:20 The winner is borge, with the bid: 1000
